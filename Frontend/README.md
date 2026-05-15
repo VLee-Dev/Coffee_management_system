@@ -56,7 +56,7 @@ The system integrates AI at three distinct touchpoints:
 ### Core Tables
 * [cite_start]**users:** `id`, `full_name`, `email`, `password_hash`, `phone`, `address`, `role`, `must_change_password`, `timestamps` [cite: 242]
 * [cite_start]**categories:** `id`, `name`, `description`, `timestamps` [cite: 244]
-* [cite_start]**products:** `id`, `category_id`, `name`, `description`, `price`, `stock_quantity`, `brand`, `status`, `image_url`, `timestamps` [cite: 246]
+* [cite_start]**products:** `id`, `category_id`, `name`, `description`, `price`, `stock_quantity`, `flavor`, `status`, `image_url`, `timestamps` [cite: 246]
 * [cite_start]**carts & cart_items:** Tracks user selections and quantities; includes `is_selected` for checkout [cite: 248, 250]
 * [cite_start]**orders & order_items:** Stores transaction details, receiver info, status, and snapshots of product price/name at time of purchase [cite: 252, 254]
 * [cite_start]**payments:** `id`, `order_id`, `method`, `amount`, `qr_content`, `status`, `paid_at`, `timestamps` [cite: 256]

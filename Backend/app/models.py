@@ -23,7 +23,10 @@ class Base(DeclarativeBase):
 
 
 class TimestampMixin:
-	created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+	created_at: Mapped[datetime] = mapped_column(
+		DateTime(timezone=True),
+		server_default=func.now(), 
+		nullable=False)
 	updated_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True),
 		server_default=func.now(),
@@ -31,17 +34,19 @@ class TimestampMixin:
 		nullable=False,
 	)
 
-
 class UserRole(str, enum.Enum):
 	admin = "admin"
 	customer = "customer"
-
 
 class ProductStatus(str, enum.Enum):
 	active = "active"
 	out_of_stock = "out_of_stock"
 	inactive = "inactive"
 
+
+class ProductType(str, enum.Enum):
+	coffee = "coffee"
+	equipment = "equipment"
 
 class OrderStatus(str, enum.Enum):
 	pending = "pending"
@@ -54,25 +59,21 @@ class OrderStatus(str, enum.Enum):
 class PaymentMethod(str, enum.Enum):
 	qr = "qr"
 
-
 class PaymentStatus(str, enum.Enum):
 	pending = "pending"
 	paid = "paid"
 	failed = "failed"
-
 
 class StockChangeType(str, enum.Enum):
 	import_ = "import"
 	export = "export"
 	adjust = "adjust"
 
-
 class BehaviorType(str, enum.Enum):
 	view = "view"
 	search = "search"
 	add_to_cart = "add_to_cart"
 	purchase = "purchase"
-
 
 class User(Base, TimestampMixin):
 	__tablename__ = "users"
@@ -93,7 +94,6 @@ class User(Base, TimestampMixin):
 	behaviors: Mapped[list[UserBehavior]] = relationship(back_populates="user", cascade="all, delete-orphan")
 	recommendation_logs: Mapped[list[RecommendationLog]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
-
 class Category(Base, TimestampMixin):
 	__tablename__ = "categories"
 
@@ -102,7 +102,6 @@ class Category(Base, TimestampMixin):
 	description: Mapped[str | None] = mapped_column(Text)
 
 	products: Mapped[list[Product]] = relationship(back_populates="category", cascade="all, delete-orphan")
-
 
 class Product(Base, TimestampMixin):
 	__tablename__ = "products"
@@ -113,11 +112,17 @@ class Product(Base, TimestampMixin):
 	description: Mapped[str | None] = mapped_column(Text)
 	price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 	stock_quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-	brand: Mapped[str | None] = mapped_column(String(120))
+	flavor: Mapped[str | None] = mapped_column(String(120))
 	status: Mapped[ProductStatus] = mapped_column(
 		Enum(ProductStatus, name="product_status"),
 		nullable=False,
 		default=ProductStatus.active,
+	)
+
+	product_type: Mapped[ProductType] = mapped_column(
+		Enum(ProductType, name="product_type"),
+		nullable=False,
+		default=ProductType.coffee,
 	)
 	image_url: Mapped[str | None] = mapped_column(String(500))
 
@@ -151,7 +156,6 @@ class CartItem(Base, TimestampMixin):
 	cart: Mapped[Cart] = relationship(back_populates="items")
 	product: Mapped[Product] = relationship(back_populates="cart_items")
 
-
 class Order(Base, TimestampMixin):
 	__tablename__ = "orders"
 
@@ -168,7 +172,6 @@ class Order(Base, TimestampMixin):
 	items: Mapped[list[OrderItem]] = relationship(back_populates="order", cascade="all, delete-orphan")
 	payment: Mapped[Payment | None] = relationship(back_populates="order", cascade="all, delete-orphan", uselist=False)
 
-
 class OrderItem(Base, TimestampMixin):
 	__tablename__ = "order_items"
 
@@ -183,7 +186,6 @@ class OrderItem(Base, TimestampMixin):
 	order: Mapped[Order] = relationship(back_populates="items")
 	product: Mapped[Product] = relationship(back_populates="order_items")
 
-
 class Payment(Base, TimestampMixin):
 	__tablename__ = "payments"
 
@@ -197,7 +199,6 @@ class Payment(Base, TimestampMixin):
 
 	order: Mapped[Order] = relationship(back_populates="payment")
 
-
 class InventoryLog(Base, TimestampMixin):
 	__tablename__ = "inventory_logs"
 
@@ -210,7 +211,6 @@ class InventoryLog(Base, TimestampMixin):
 
 	product: Mapped[Product] = relationship(back_populates="inventory_logs")
 	creator: Mapped[User | None] = relationship(back_populates="inventory_logs")
-
 
 class UserPreference(Base, TimestampMixin):
 	__tablename__ = "user_preferences"
