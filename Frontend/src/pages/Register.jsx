@@ -23,7 +23,7 @@ export default function Register() {
     setLoading(true)
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+      const apiBase = import.meta.env.VITE_API_BASE_URL
       const response = await fetch(`${apiBase}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,7 +77,7 @@ export default function Register() {
           <form onSubmit={handleSubmit} className="w-full flex flex-col gap-stack-md">
             <div className="flex flex-col gap-unit">
               <label className="font-label-md text-label-md text-on-surface-variant ml-unit" htmlFor="username">
-                Tên đăng nhập
+                Họ và Tên
               </label>
               <div className="relative">
                 <img src={personIcon} alt="" className="absolute left-3 top-1/2 h-6 w-6 -translate-y-1/2 opacity-70" />
@@ -85,7 +85,7 @@ export default function Register() {
                   className="w-full pl-10 pr-4 py-3 bg-background border-2 border-surface-variant rounded-lg font-body-md text-body-md text-on-surface placeholder-outline focus:border-secondary-container focus:ring-0 transition-colors"
                   id="username"
                   name="username"
-                  placeholder="Nhập tên đăng nhập"
+                  placeholder="Tên của bạn"
                   required
                   type="text"
                   value={fullName}
@@ -115,7 +115,7 @@ export default function Register() {
 
             <div className="flex flex-col gap-unit">
               <label className="font-label-md text-label-md text-on-surface-variant ml-unit" htmlFor="email">
-                Email
+                Email-Tài khoản đăng nhập
               </label>
               <div className="relative">
                 <img src={mailIcon} alt="" className="absolute left-3 top-1/2 h-6 w-6 -translate-y-1/2 opacity-70" />

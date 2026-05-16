@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.utils.security import get_password_hash
 
-DEFAULT_ADMIN_EMAIL = "admin@meocoffee.local"
+DEFAULT_ADMIN_EMAIL = "admin@meocoffee.com"
 DEFAULT_ADMIN_PASSWORD = "123456"
 DEFAULT_ADMIN_NAME = "admin"
 

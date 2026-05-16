@@ -208,6 +208,7 @@ class InventoryLog(Base, TimestampMixin):
 	change_type: Mapped[StockChangeType] = mapped_column(Enum(StockChangeType, name="stock_change_type"), nullable=False)
 	quantity: Mapped[int] = mapped_column(Integer, nullable=False)
 	note: Mapped[str | None] = mapped_column(Text)
+	imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 	product: Mapped[Product] = relationship(back_populates="inventory_logs")
 	creator: Mapped[User | None] = relationship(back_populates="inventory_logs")

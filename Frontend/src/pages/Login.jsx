@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import heroImage from '../assets/meocam.jfif'
 import petIcon from '../assets/iconpet.svg'
+import { clearToken, fetchCurrentUser, getApiBase, isAdmin } from '../lib/auth'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -16,7 +17,7 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+      const apiBase = getApiBase()
       const form = new URLSearchParams()
       form.append('username', email)
       form.append('password', password)
@@ -29,13 +30,23 @@ export default function Login() {
 
       if (!response.ok) {
         const text = await response.text()
-        throw new Error(text || 'Login failed')
+        throw new Error(text || 'Đăng nhập thất bại')
       }
 
       const data = await response.json()
       localStorage.setItem('access_token', data.access_token)
-      // after successful login go to admin products
-      navigate('/admin', { replace: true })
+
+      const user = await fetchCurrentUser(data.access_token)
+      if (!user) {
+        clearToken()
+        throw new Error('Đăng nhập thất bại')
+      }
+
+      if (isAdmin(user)) {
+        navigate('/admin/products', { replace: true })
+      } else {
+        navigate('/hello', { replace: true })
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -75,14 +86,14 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-stack-md bg-surface-container-lowest p-stack-lg rounded-[24px] diffusion-shadow border border-surface-container">
             <div className="space-y-stack-sm">
               <label className="block font-label-md text-label-md text-on-surface-variant" htmlFor="username">
-                Tên đăng nhập
+                Email
               </label>
               <input
                 className="w-full bg-background border-2 border-outline-variant text-on-background rounded-xl px-4 py-3 font-body-md text-body-md focus:border-secondary-container focus:ring-0 transition-colors placeholder:text-outline-variant/60"
                 id="username"
                 name="username"
-                placeholder="Nhập tên đăng nhập của bạn"
-                type="text"
+                placeholder="Nhập tài khoản"
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />

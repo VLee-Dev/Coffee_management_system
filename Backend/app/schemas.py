@@ -13,7 +13,7 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
 	id: int
 	full_name: str
-	email: EmailStr
+	email: str
 	phone: Optional[str] = None
 	role: str
 

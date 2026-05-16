@@ -7,7 +7,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app import models
 from app.schemas import UserCreate, UserOut, Token
 from app.database import get_db
-from app.utils.security import get_password_hash, verify_password, create_access_token
+from app.utils.security import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    get_current_user,
+)
 
 router = APIRouter(tags=["auth"])
 
@@ -41,3 +46,14 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     access_token = create_access_token(data={"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=UserOut)
+def read_me(current_user: models.User = Depends(get_current_user)):
+    return UserOut(
+        id=current_user.id,
+        full_name=current_user.full_name,
+        email=current_user.email,
+        phone=current_user.phone,
+        role=current_user.role.value,
+    )

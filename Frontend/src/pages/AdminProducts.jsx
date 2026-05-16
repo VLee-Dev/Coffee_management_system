@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import AdminLayout from './AdminLayout'
 import searchIcon from '../assets/search_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import menuIcon from '../assets/menu_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import logoutIcon from '../assets/logout_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
@@ -25,7 +24,7 @@ export default function AdminProducts() {
   const [search, setSearch] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [productType, setProductType] = useState('coffee')
-  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  const apiBase = import.meta.env.VITE_API_BASE_URL 
   const token = localStorage.getItem('access_token')
   const [categories, setCategories] = useState([])
   const [showAddModal, setShowAddModal] = useState(false)
@@ -73,13 +72,6 @@ export default function AdminProducts() {
     })
     setImagePreview(null)
   }
-
-  useEffect(() => {
-    // when switching tabs, reset transient UI state to avoid stale values
-    resetForm(productType)
-    setEditingProduct(null)
-    setDeletingProduct(null)
-  }, [productType])
 
   useEffect(() => {
     async function load() {
@@ -144,7 +136,7 @@ export default function AdminProducts() {
   }
 
   return (
-    <AdminLayout>
+    <>
       <header className="flex justify-between items-center w-full px-container-padding-desktop h-16 z-40 bg-surface shadow-sm sticky top-0 flex-shrink-0 border-b border-outline-variant/20">
         <div className="flex items-center gap-stack-md w-full max-w-md">
           <div className="flex items-center bg-surface-container rounded-full px-4 py-2 w-full border border-transparent focus-within:border-secondary-container focus-within:bg-surface-bright transition-colors shadow-inner">
@@ -207,7 +199,7 @@ export default function AdminProducts() {
           <div className="flex gap-stack-lg border-b border-outline-variant/40">
             <button
               type="button"
-              onClick={() => setProductType('coffee')}
+              onClick={() => { setProductType('coffee'); resetForm('coffee'); setEditingProduct(null); setDeletingProduct(null); }}
               className={`font-label-md text-[16px] pb-3 -mb-[2px] relative flex items-center gap-2 ${productType === 'coffee' ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}
             >
               Coffee
@@ -215,7 +207,7 @@ export default function AdminProducts() {
             </button>
             <button
               type="button"
-              onClick={() => setProductType('equipment')}
+              onClick={() => { setProductType('equipment'); resetForm('equipment'); setEditingProduct(null); setDeletingProduct(null); }}
               className={`font-label-md text-[16px] pb-3 flex items-center gap-2 ${productType === 'equipment' ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}
             >
               Dụng cụ pha coffee
@@ -300,7 +292,6 @@ export default function AdminProducts() {
             <button
               type="button"
               onClick={() => {
-                // prepare fresh form defaults based on current tab
                 resetForm(productType)
                 setShowAddModal(true)
               }}
@@ -345,17 +336,14 @@ export default function AdminProducts() {
                   <label className="font-label-md text-on-surface-variant">{productType === 'coffee' ? 'Hương vị' : 'Chất liệu'}</label>
                   <input value={form.flavor} onChange={(e)=>setForm(f=>({...f,flavor:e.target.value}))} className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md" placeholder={productType === 'coffee' ? 'Nhập hương vị' : 'Nhập chất liệu'} type="text"/>
                 </div>
-                {productType === 'coffee' ? (
+                {productType === 'coffee' && (
                   <div className="flex flex-col gap-2">
                     <label className="font-label-md text-on-surface-variant">Khối lượng / túi</label>
-                    <input value={form.weight || '250g'} readOnly className="bg-surface-container border-none rounded-xl px-4 py-3 text-body-md" />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <label className="font-label-md text-on-surface-variant">Danh mục</label>
-                    <select value={form.category_id || ''} onChange={(e)=>setForm(f=>({...f,category_id: Number(e.target.value)}))} className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md">
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    <input 
+                    value={form.weight || '250g'} 
+                    readOnly 
+                    className="bg-surface-container border-none rounded-xl px-4 py-3 text-body-md" 
+                    />
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
@@ -440,18 +428,15 @@ export default function AdminProducts() {
                   <label className="font-label-md text-on-surface-variant">{(editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee' ? 'Hương vị' : 'Chất liệu'}</label>
                   <input value={form.flavor} onChange={(e)=>setForm(f=>({...f,flavor:e.target.value}))} className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md" placeholder={(editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee' ? 'Nhập hương vị' : 'Nhập chất liệu'} type="text"/>
                 </div>
-                {((editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee') ? (
+                {((editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee') && (
                   <div className="flex flex-col gap-2">
                     <label className="font-label-md text-on-surface-variant">Khối lượng / túi</label>
-                    <input value={form.weight || '250g'} readOnly className="bg-surface-container border-none rounded-xl px-4 py-3 text-body-md" />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <label className="font-label-md text-on-surface-variant">Danh mục</label>
-                    <select value={form.category_id || ''} onChange={(e)=>setForm(f=>({...f,category_id: Number(e.target.value)}))} className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md">
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
+                    <input 
+                    value={form.weight || '250g'} 
+                    readOnly 
+                    className="bg-surface-container border-none rounded-xl px-4 py-3 text-body-md" 
+                    />
+                    </div>
                 )}
                 <div className="flex flex-col gap-2">
                   <label className="font-label-md text-on-surface-variant">Số lượng kho</label>
@@ -528,7 +513,7 @@ export default function AdminProducts() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   )
 }
 

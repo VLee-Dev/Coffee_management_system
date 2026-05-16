@@ -18,7 +18,8 @@ def list_products(
 	status: models.ProductStatus | None = None,
 	product_type: models.ProductType | None = None,
 	skip: int = 0,
-	limit: int = 20,
+	limit: int = 100,
+	sort: str | None = Query(default=None, pattern="^(id_desc|stock_asc|stock_desc)$"),
 ):
 	query = db.query(models.Product)
 	if search:
@@ -34,7 +35,13 @@ def list_products(
 		query = query.filter(models.Product.status == status)
 	if product_type is not None:
 		query = query.filter(models.Product.product_type == product_type)
-	return query.order_by(models.Product.id.desc()).offset(skip).limit(limit).all()
+	if sort == "stock_asc":
+		order = models.Product.stock_quantity.asc()
+	elif sort == "stock_desc":
+		order = models.Product.stock_quantity.desc()
+	else:
+		order = models.Product.id.desc()
+	return query.order_by(order).offset(skip).limit(limit).all()
 
 
 @router.get("/{product_id}", response_model=ProductOut)
@@ -104,9 +111,7 @@ def delete_product(
 			# only handle local relative paths like "/static/uploads/..." or "static/uploads/..."
 			if not img.startswith('http'):
 				rel = img.lstrip('/')
-				# ensure we're only deleting files under static/uploads
 				if 'static/uploads' in img:
-					# support both full urls (http://host/static/uploads/...) and relative paths
 					idx = img.find('static/uploads')
 					rel_path = img[idx:]
 					base = Path(__file__).resolve().parents[2]
@@ -114,7 +119,6 @@ def delete_product(
 					if file_path.exists():
 						file_path.unlink()
 	except Exception:
-		# don't block deletion if file remove fails
 		pass
 
 	db.delete(product)
