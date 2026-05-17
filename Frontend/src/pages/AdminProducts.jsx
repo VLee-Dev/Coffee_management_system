@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import searchIcon from '../assets/search_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
-import menuIcon from '../assets/menu_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
-import logoutIcon from '../assets/logout_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
+import AdminUserMenu from '../components/AdminUserMenu'
+import Pagination from '../components/Pagination'
+import FlavorTagPicker from '../components/FlavorTagPicker'
+import { paginateSlice } from '../lib/pagination'
 import addIcon from '../assets/add_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
+
+const PRODUCTS_PAGE_SIZE = 12
 import addCircleIcon from '../assets/add_circle_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import editIcon from '../assets/edit_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import deleteIcon from '../assets/delete_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
@@ -17,12 +20,10 @@ function formatVnd(value) {
 }
 
 export default function AdminProducts() {
-  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [productType, setProductType] = useState('coffee')
   const apiBase = import.meta.env.VITE_API_BASE_URL 
   const token = localStorage.getItem('access_token')
@@ -36,6 +37,7 @@ export default function AdminProducts() {
     category_id: null,
     product_type: 'coffee',
     flavor: '',
+    flavor_tag_ids: [],
     description: '',
     stock_quantity: 0,
     image_url: '',
@@ -43,6 +45,7 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState(null)
   const [deletingProduct, setDeletingProduct] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
+  const [page, setPage] = useState(1)
 
   function resolveImageUrl(url) {
     if (!url) return heroFallback
@@ -56,6 +59,18 @@ export default function AdminProducts() {
     return params.toString()
   }, [search, productType])
 
+  const productTotalPages = Math.max(1, Math.ceil(products.length / PRODUCTS_PAGE_SIZE) || 1)
+  const paginatedProducts = paginateSlice(products, page, PRODUCTS_PAGE_SIZE)
+  const showAddCard = page === productTotalPages
+
+  useEffect(() => {
+    setPage(1)
+  }, [productType, search])
+
+  useEffect(() => {
+    if (page > productTotalPages) setPage(productTotalPages)
+  }, [page, productTotalPages])
+
   function resetForm(pt = productType) {
     const defaultCategoryId = (categories && categories.length)
       ? (pt === 'coffee' ? (categories.find(c => c.name && c.name.toLowerCase() === 'coffee')?.id || categories[0].id) : categories[0].id)
@@ -66,6 +81,7 @@ export default function AdminProducts() {
       category_id: defaultCategoryId,
       product_type: pt,
       flavor: '',
+      flavor_tag_ids: [],
       description: '',
       stock_quantity: 0,
       image_url: '',
@@ -130,17 +146,12 @@ export default function AdminProducts() {
     }
   }
 
-  function handleLogout() {
-    localStorage.removeItem('access_token')
-    navigate('/login', { replace: true })
-  }
-
   return (
     <>
       <header className="flex justify-between items-center w-full px-container-padding-desktop h-16 z-40 bg-surface shadow-sm sticky top-0 flex-shrink-0 border-b border-outline-variant/20">
         <div className="flex items-center gap-stack-md w-full max-w-md">
           <div className="flex items-center bg-surface-container rounded-full px-4 py-2 w-full border border-transparent focus-within:border-secondary-container focus-within:bg-surface-bright transition-colors shadow-inner">
-            <img src={searchIcon} alt="" className="h-5 w-5 mr-2 opacity-70" />
+            <img src={searchIcon} alt="" className="h-5 w-5 mr-2 icon-dark" />
             <input
               className="bg-transparent border-none outline-none w-full font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/70"
               placeholder="Tìm kiếm sản phẩm..."
@@ -150,38 +161,15 @@ export default function AdminProducts() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-stack-md relative">
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="p-2 text-on-surface-variant hover:bg-surface-container-highest rounded-full transition-colors flex items-center justify-center"
-          >
-            <img src={menuIcon} alt="menu" className="h-5 w-5 opacity-80" />
-          </button>
-
-          {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-surface-bright border border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
-              <div className="p-2">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-error-container/20 hover:text-error rounded-lg transition-colors"
-                >
-                  <img src={logoutIcon} alt="logout" className="h-5 w-5" />
-                  <span className="font-label-md">Đăng xuất</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <AdminUserMenu />
       </header>
 
       <div className="flex-1 overflow-y-auto p-container-padding-mobile md:p-container-padding-desktop pb-24">
         <div className="max-w-7xl mx-auto flex flex-col gap-stack-lg">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-stack-md mt-4">
             <h1 className="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">
-              Quản lý Sản phẩm
-              <img src={localCafeIcon} alt="" className="h-8 w-8 opacity-50" />
+              Quản lý sản phẩm
+              <img src={localCafeIcon} alt="" className="h-8 w-8 opacity-50 icon-dark" />
             </h1>
             <button
               type="button"
@@ -191,7 +179,7 @@ export default function AdminProducts() {
               }}
               className="bg-primary text-on-primary font-label-md text-label-md px-6 py-3 rounded-full shadow-[0_4px_14px_rgba(75,54,33,0.15)] flex items-center gap-2 active:scale-[0.98] transition-all hover:shadow-[0_6px_20px_rgba(75,54,33,0.2)] border border-primary-container self-start sm:self-auto"
             >
-              <img src={addIcon} alt="" className="h-5 w-5" />
+              <img src={addIcon} alt="" className="h-5 w-5 brightness-0 invert opacity-90" />
               {productType === 'coffee' ? 'Thêm Coffee' : 'Thêm Dụng cụ pha coffee'}
             </button>
           </div>
@@ -203,7 +191,7 @@ export default function AdminProducts() {
               className={`font-label-md text-[16px] pb-3 -mb-[2px] relative flex items-center gap-2 ${productType === 'coffee' ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}
             >
               Coffee
-              <img src={localCafeIcon} alt="" className="h-4 w-4" />
+              <img src={localCafeIcon} alt="" className="h-4 w-4 icon-dark" />
             </button>
             <button
               type="button"
@@ -211,15 +199,16 @@ export default function AdminProducts() {
               className={`font-label-md text-[16px] pb-3 flex items-center gap-2 ${productType === 'equipment' ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}
             >
               Dụng cụ pha coffee
-              <img src={blenderIcon} alt="" className="h-4 w-4 opacity-70" />
+              <img src={blenderIcon} alt="" className="h-4 w-4 icon-dark" />
             </button>
           </div>
 
           {error && <p className="text-error font-label-md">{error}</p>}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-stack-md lg:gap-stack-lg">
+          <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/40 overflow-hidden shadow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-stack-md lg:gap-stack-lg p-stack-md">
             {loading && <div className="col-span-full text-on-surface-variant">Đang tải...</div>}
-            {!loading && products.map((p) => {
+            {!loading && paginatedProducts.map((p) => {
               const lowStock = Number(p.stock_quantity || 0) <= 5
               return (
                 <div
@@ -241,7 +230,16 @@ export default function AdminProducts() {
                   <div className="p-stack-md flex flex-col flex-1 gap-2 bg-gradient-to-b from-surface-bright to-surface">
                     <h3 className="font-headline-md text-[18px] leading-[24px] font-bold text-on-surface">{p.name}</h3>
                     <div className="flex gap-2 flex-wrap mt-1">
-                      {p.flavor && (
+                      {(p.flavor_tags || []).map((tag) => (
+                        <span
+                          key={tag.id}
+                          className="bg-secondary-container/20 text-tertiary font-label-sm text-label-sm px-2.5 py-1 rounded-full border border-secondary-container/30"
+                          title={tag.group_name}
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                      {!p.flavor_tags?.length && p.flavor && (
                         <span className="bg-secondary-container/20 text-tertiary font-label-sm text-label-sm px-2.5 py-1 rounded-full border border-secondary-container/30">
                           {p.flavor}
                         </span>
@@ -261,6 +259,7 @@ export default function AdminProducts() {
                               category_id: p.category_id || (categories[0] && categories[0].id),
                               product_type: p.product_type || 'coffee',
                               flavor: p.flavor || '',
+                              flavor_tag_ids: (p.flavor_tags || []).map((t) => t.id),
                               description: p.description || '',
                               stock_quantity: p.stock_quantity || 0,
                               image_url: p.image_url || '',
@@ -269,14 +268,14 @@ export default function AdminProducts() {
                             setShowEditModal(true)
                           }}
                         >
-                          <img src={editIcon} alt="edit" className="h-[18px] w-[18px]" />
+                          <img src={editIcon} alt="edit" className="h-[18px] w-[18px] icon-dark" />
                         </button>
                         <button
                           type="button"
                           className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-error-container hover:text-error transition-colors"
                           onClick={() => { setDeletingProduct(p); setShowDeleteModal(true) }}
                         >
-                          <img src={deleteIcon} alt="delete" className="h-[18px] w-[18px]" />
+                          <img src={deleteIcon} alt="delete" className="h-[18px] w-[18px] icon-dark" />
                         </button>
                       </div>
                     </div>
@@ -289,6 +288,7 @@ export default function AdminProducts() {
               <div className="col-span-full text-on-surface-variant">Không có sản phẩm</div>
             )}
 
+            {!loading && showAddCard && (
             <button
               type="button"
               onClick={() => {
@@ -298,12 +298,22 @@ export default function AdminProducts() {
               className="bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-xl overflow-hidden flex flex-col items-center justify-center p-stack-lg hover:bg-surface-container-high hover:border-primary-container transition-all duration-300 group min-h-[260px] md:min-h-[300px]"
             >
               <div className="w-16 h-16 rounded-full bg-surface-bright flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm text-tertiary">
-                <img src={addCircleIcon} alt="add" className="h-8 w-8" />
+                <img src={addCircleIcon} alt="add" className="h-8 w-8 icon-dark" />
               </div>
               <span className="font-headline-md text-[18px] text-on-surface-variant group-hover:text-primary transition-colors">
                 {productType === 'coffee' ? 'Thêm sản phẩm mới' : 'Thêm dụng cụ mới'}
               </span>
             </button>
+            )}
+          </div>
+          {!loading && products.length > PRODUCTS_PAGE_SIZE && (
+            <Pagination
+              page={page}
+              total={products.length}
+              pageSize={PRODUCTS_PAGE_SIZE}
+              onPageChange={setPage}
+            />
+          )}
           </div>
         </div>
       </div>
@@ -332,10 +342,23 @@ export default function AdminProducts() {
                   <label className="font-label-md text-on-surface-variant">Loại sản phẩm</label>
                   <input readOnly value={productType === 'coffee' ? 'Coffee' : 'Dụng cụ pha coffee'} className="bg-surface-container border-none rounded-xl px-4 py-3 text-body-md opacity-90 pr-4" aria-readonly="true" />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label className="font-label-md text-on-surface-variant">{productType === 'coffee' ? 'Hương vị' : 'Chất liệu'}</label>
-                  <input value={form.flavor} onChange={(e)=>setForm(f=>({...f,flavor:e.target.value}))} className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md" placeholder={productType === 'coffee' ? 'Nhập hương vị' : 'Nhập chất liệu'} type="text"/>
-                </div>
+                {productType === 'coffee' ? (
+                  <FlavorTagPicker
+                    value={form.flavor_tag_ids}
+                    onChange={(ids) => setForm((f) => ({ ...f, flavor_tag_ids: ids }))}
+                  />
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <label className="font-label-md text-on-surface-variant">Chất liệu</label>
+                    <input
+                      value={form.flavor}
+                      onChange={(e) => setForm((f) => ({ ...f, flavor: e.target.value }))}
+                      className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md"
+                      placeholder="Nhập chất liệu"
+                      type="text"
+                    />
+                  </div>
+                )}
                 {productType === 'coffee' && (
                   <div className="flex flex-col gap-2">
                     <label className="font-label-md text-on-surface-variant">Khối lượng / túi</label>
@@ -380,7 +403,8 @@ export default function AdminProducts() {
                     description: form.description,
                     price: Number(form.price),
                     stock_quantity: Math.max(0, Number(form.stock_quantity) || 0),
-                    flavor: form.flavor,
+                    flavor: productType === 'equipment' ? form.flavor : null,
+                    flavor_tag_ids: productType === 'coffee' ? form.flavor_tag_ids : [],
                     product_type: productType,
                     image_url: form.image_url || null,
                   }
@@ -424,10 +448,23 @@ export default function AdminProducts() {
                     <option value="equipment">Dụng cụ pha coffee</option>
                   </select>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label className="font-label-md text-on-surface-variant">{(editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee' ? 'Hương vị' : 'Chất liệu'}</label>
-                  <input value={form.flavor} onChange={(e)=>setForm(f=>({...f,flavor:e.target.value}))} className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md" placeholder={(editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee' ? 'Nhập hương vị' : 'Nhập chất liệu'} type="text"/>
-                </div>
+                {((editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee') ? (
+                  <FlavorTagPicker
+                    value={form.flavor_tag_ids}
+                    onChange={(ids) => setForm((f) => ({ ...f, flavor_tag_ids: ids }))}
+                  />
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <label className="font-label-md text-on-surface-variant">Chất liệu</label>
+                    <input
+                      value={form.flavor}
+                      onChange={(e) => setForm((f) => ({ ...f, flavor: e.target.value }))}
+                      className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md"
+                      placeholder="Nhập chất liệu"
+                      type="text"
+                    />
+                  </div>
+                )}
                 {((editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee') && (
                   <div className="flex flex-col gap-2">
                     <label className="font-label-md text-on-surface-variant">Khối lượng / túi</label>
@@ -472,7 +509,9 @@ export default function AdminProducts() {
                   if(form.description!=null) body.description = form.description
                   if(form.price!='') body.price = Number(form.price)
                   if(form.stock_quantity!=null) body.stock_quantity = Math.max(0, Number(form.stock_quantity) || 0)
-                  if(form.flavor!=null) body.flavor = form.flavor
+                  const pt = form.product_type || editingProduct.product_type
+                  if (pt === 'equipment' && form.flavor != null) body.flavor = form.flavor
+                  if (pt === 'coffee') body.flavor_tag_ids = form.flavor_tag_ids || []
                   if(form.product_type) body.product_type = form.product_type
                   if(form.image_url!=null) body.image_url = form.image_url || null
                   const res = await fetch(`${apiBase}/products/${editingProduct.id}`, {method:'PATCH', headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : undefined }, body: JSON.stringify(body)})
@@ -492,7 +531,7 @@ export default function AdminProducts() {
         <div className="fixed inset-0 z-[100] bg-on-background/40 backdrop-blur-sm flex items-center justify-center p-container-padding-mobile">
           <div className="bg-surface-bright w-full max-w-md rounded-[24px] shadow-2xl p-8 border border-outline-variant/30 flex flex-col gap-6">
             <div className="w-16 h-16 bg-error-container/30 text-error rounded-full flex items-center justify-center self-center">
-              <img src={deleteIcon} alt="del" className="h-8 w-8" />
+              <img src={deleteIcon} alt="del" className="h-8 w-8 icon-dark" />
             </div>
             <div className="text-center">
               <h3 className="font-headline-md text-headline-md text-on-surface mb-2">Xác nhận xóa?</h3>
@@ -503,7 +542,17 @@ export default function AdminProducts() {
               <button onClick={async ()=>{
                 try{
                   const res = await fetch(`${apiBase}/products/${deletingProduct.id}`, {method:'DELETE', headers: { Authorization: token ? `Bearer ${token}` : undefined }})
-                  if(res.status!==204) { const txt = await res.text(); throw new Error(txt || 'Failed') }
+                  if(res.status!==204) {
+                    let msg = 'Xóa sản phẩm thất bại'
+                    try {
+                      const data = await res.json()
+                      msg = typeof data.detail === 'string' ? data.detail : msg
+                    } catch {
+                      const txt = await res.text()
+                      if (txt) msg = txt
+                    }
+                    throw new Error(msg)
+                  }
                   setShowDeleteModal(false)
                   const refreshed = await (await fetch(`${apiBase}/products?product_type=${productType}`, {headers: token?{Authorization:`Bearer ${token}`}:undefined})).json()
                   setProducts(refreshed)

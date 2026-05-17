@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app import models
-from app.schemas import UserCreate, UserOut, Token
+from app.schemas import PasswordChangeIn, UserCreate, UserOut, Token
 from app.database import get_db
 from app.utils.security import (
     get_password_hash,
@@ -57,3 +57,20 @@ def read_me(current_user: models.User = Depends(get_current_user)):
         phone=current_user.phone,
         role=current_user.role.value,
     )
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    body: PasswordChangeIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if not verify_password(body.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mật khẩu hiện tại không đúng",
+        )
+    current_user.password_hash = get_password_hash(body.new_password)
+    current_user.must_change_password = False
+    db.commit()
+    return None

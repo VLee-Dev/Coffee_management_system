@@ -8,6 +8,7 @@ import AdminLayout from './pages/AdminLayout'
 import AdminProducts from './pages/AdminProducts'
 import AdminInventory from './pages/AdminInventory'
 import AdminOrders from './pages/AdminOrders'
+import AdminProfile from './pages/AdminProfile'
 
 export default function App() {
   return (
@@ -24,18 +25,14 @@ export default function App() {
             </CustomerRoute>
           }
         />
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminLayout />
-            </AdminRoute>
-          }
-        >
-          <Route index element={<Navigate to="products" replace />} />
-          <Route path="products" element={<AdminProducts />} />
-          <Route path="inventory" element={<AdminInventory />} />
-          <Route path="orders" element={<AdminOrders />} />
+        <Route path="/admin" element={<AdminRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<Navigate to="products" replace />} />
+            <Route path="products" element={<AdminProducts />} />
+            <Route path="inventory" element={<AdminInventory />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="profile" element={<AdminProfile />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

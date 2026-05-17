@@ -1,16 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import searchIcon from '../assets/search_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
-import menuIcon from '../assets/menu_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
-import logoutIcon from '../assets/logout_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
+import AdminUserMenu from '../components/AdminUserMenu'
+import Pagination from '../components/Pagination'
+import { paginateSlice } from '../lib/pagination'
+
+const INVENTORY_PAGE_SIZE = 9
+import editIcon from '../assets/edit_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
+import deleteIcon from '../assets/delete_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import localCafeIcon from '../assets/local_cafe.svg'
 import blenderIcon from '../assets/blender_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
-import { clearToken, getApiBase, getToken } from '../lib/auth'
+import { getApiBase, getToken } from '../lib/auth'
 
 const LOW_STOCK_THRESHOLD = 10
+const ICON = 'h-5 w-5 icon-dark'
 
-function todayInputValue() {
-  return new Date().toISOString().slice(0, 10)
+function nowDatetimeLocalValue() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function datetimeLocalToIso(value) {
+  if (!value) return null
+  return new Date(value).toISOString()
+}
+
+function isoToDatetimeLocal(iso) {
+  if (!iso) return nowDatetimeLocalValue()
+  const d = new Date(iso)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function formatDateTime(iso) {
@@ -31,33 +50,39 @@ function stockUnit(productType) {
 function stockStatus(stock) {
   const qty = Number(stock || 0)
   if (qty <= 0) return { label: 'Hết hàng', tone: 'error', low: true }
-  if (qty <= LOW_STOCK_THRESHOLD) return { label: 'Sắp hết hàng! Cần nhập thêm.', tone: 'error', low: true }
+  if (qty < LOW_STOCK_THRESHOLD) return { label: 'Sắp hết hàng! Cần nhập thêm.', tone: 'error', low: true }
   return { label: 'Đang ổn định', tone: 'ok', low: false }
 }
 
+function defaultImportForm() {
+  return {
+    product_id: '',
+    quantity: '',
+    note: '',
+    imported_at: nowDatetimeLocalValue(),
+  }
+}
+
 export default function AdminInventory() {
-  const navigate = useNavigate()
   const apiBase = getApiBase()
   const token = getToken()
-  const today = todayInputValue()
+  const maxDatetimeLocal = nowDatetimeLocalValue()
 
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [productType, setProductType] = useState('coffee')
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [importLogs, setImportLogs] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [importForm, setImportForm] = useState({
-    product_id: '',
-    quantity: '',
-    note: '',
-    imported_at: today,
-  })
+  const [importForm, setImportForm] = useState(defaultImportForm)
   const [submitting, setSubmitting] = useState(false)
+  const [editingLog, setEditingLog] = useState(null)
+  const [editLogForm, setEditLogForm] = useState({ quantity: '', note: '', imported_at: '' })
+  const [deletingLog, setDeletingLog] = useState(null)
+  const [page, setPage] = useState(1)
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams()
@@ -67,6 +92,17 @@ export default function AdminInventory() {
     if (search.trim()) params.set('search', search.trim())
     return params.toString()
   }, [search, productType])
+
+  const inventoryTotalPages = Math.max(1, Math.ceil(products.length / INVENTORY_PAGE_SIZE) || 1)
+  const paginatedProducts = paginateSlice(products, page, INVENTORY_PAGE_SIZE)
+
+  useEffect(() => {
+    setPage(1)
+  }, [productType, search])
+
+  useEffect(() => {
+    if (page > inventoryTotalPages) setPage(inventoryTotalPages)
+  }, [page, inventoryTotalPages])
 
   const loadProducts = useCallback(async () => {
     setLoading(true)
@@ -118,24 +154,22 @@ export default function AdminInventory() {
 
   function openImportModal(product = null) {
     setImportForm({
+      ...defaultImportForm(),
       product_id: product ? String(product.id) : '',
-      quantity: '',
-      note: '',
-      imported_at: today,
     })
     setShowImportModal(true)
   }
 
-  function validateImportDate(dateStr) {
-    if (!dateStr) return 'Vui lòng chọn ngày nhập'
-    if (dateStr > today) return 'Ngày nhập không được vượt quá ngày hiện tại'
+  function validateImportDatetime(value) {
+    if (!value) return 'Vui lòng chọn ngày giờ nhập'
+    if (value > maxDatetimeLocal) return 'Thời điểm nhập không được vượt quá hiện tại'
     return null
   }
 
   async function handleImportSubmit() {
     const productId = Number(importForm.product_id)
     const quantity = Number(importForm.quantity)
-    const dateError = validateImportDate(importForm.imported_at)
+    const dateError = validateImportDatetime(importForm.imported_at)
 
     if (!productId || !quantity || quantity <= 0) {
       alert('Chọn sản phẩm và nhập số lượng hợp lệ')
@@ -159,7 +193,7 @@ export default function AdminInventory() {
           change_type: 'import',
           quantity,
           note: importForm.note || null,
-          imported_at: importForm.imported_at,
+          imported_at: datetimeLocalToIso(importForm.imported_at),
         }),
       })
       if (!res.ok) {
@@ -176,9 +210,76 @@ export default function AdminInventory() {
     }
   }
 
-  function handleLogout() {
-    clearToken()
-    navigate('/login', { replace: true })
+  function openEditLog(log) {
+    setEditingLog(log)
+    setEditLogForm({
+      quantity: String(log.quantity),
+      note: log.note || '',
+      imported_at: isoToDatetimeLocal(log.imported_at),
+    })
+  }
+
+  async function handleEditLogSubmit() {
+    if (!editingLog) return
+    const quantity = Number(editLogForm.quantity)
+    const dateError = validateImportDatetime(editLogForm.imported_at)
+    if (!quantity || quantity <= 0) {
+      alert('Số lượng phải lớn hơn 0')
+      return
+    }
+    if (dateError) {
+      alert(dateError)
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const res = await fetch(`${apiBase}/inventory/logs/${editingLog.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          quantity,
+          note: editLogForm.note || null,
+          imported_at: datetimeLocalToIso(editLogForm.imported_at),
+        }),
+      })
+      if (!res.ok) {
+        const txt = await res.text()
+        throw new Error(txt || 'Cập nhật thất bại')
+      }
+      setEditingLog(null)
+      await loadProducts()
+      await loadImportHistory()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDeleteLog() {
+    if (!deletingLog) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`${apiBase}/inventory/logs/${deletingLog.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.status !== 204) {
+        const txt = await res.text()
+        throw new Error(txt || 'Xóa thất bại')
+      }
+      setDeletingLog(null)
+      await loadProducts()
+      await loadImportHistory()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -186,7 +287,7 @@ export default function AdminInventory() {
       <header className="flex justify-between items-center w-full px-container-padding-desktop h-16 z-40 bg-surface shadow-sm flex-shrink-0 border-b border-outline-variant/20">
         <div className="flex items-center gap-stack-md">
           <div className="relative flex items-center bg-surface-container rounded-full px-4 py-2 border border-outline-variant/40 focus-within:border-secondary-container transition-colors">
-            <img src={searchIcon} alt="" className="h-5 w-5 mr-2 opacity-70" />
+            <img src={searchIcon} alt="" className={`${ICON} mr-2`} />
             <input
               className="bg-transparent border-none outline-none w-64 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/70"
               placeholder="Tìm kiếm kho..."
@@ -196,45 +297,36 @@ export default function AdminInventory() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-stack-md relative">
+        <div className="flex items-center gap-stack-md">
           <div className="font-headline-md text-headline-md font-bold text-primary hidden sm:block">Meo Coffee</div>
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen((v) => !v)}
-            className="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"
-          >
-            <img src={menuIcon} alt="menu" className="h-5 w-5 opacity-80" />
-          </button>
-          {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-surface-bright border border-outline-variant rounded-xl shadow-lg z-50 py-2">
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-4 py-2 hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-colors"
-              >
-                <img src={logoutIcon} alt="" className="h-5 w-5" />
-                <span className="font-label-md">Đăng xuất</span>
-              </button>
-            </div>
-          )}
+          <AdminUserMenu />
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-container-padding-mobile md:p-container-padding-desktop bg-background">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-stack-md mb-stack-lg">
           <div>
-            <h1 className="font-display-lg text-display-lg text-on-surface tracking-tight">Quản lý kho</h1>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">Quản lý kho</h1>
             <p className="font-body-md text-body-md text-on-surface-variant mt-unit">
               Tổng quan số lượng sản phẩm
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowHistoryModal(true)}
-            className="px-stack-lg py-2.5 bg-primary text-on-primary rounded-full font-label-md font-bold shadow-sm hover:scale-95 transition-transform self-start"
-          >
-            Lịch sử nhập hàng
-          </button>
+          <div className="flex flex-wrap gap-2 self-start">
+            <button
+              type="button"
+              onClick={() => openImportModal()}
+              className="px-stack-lg py-2.5 bg-secondary-container text-on-secondary-container rounded-full font-label-md font-bold shadow-sm hover:scale-95 transition-transform"
+            >
+              Nhập kho
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(true)}
+              className="px-stack-lg py-2.5 bg-primary text-on-primary rounded-full font-label-md font-bold shadow-sm hover:scale-95 transition-transform"
+            >
+              Lịch sử nhập hàng
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-stack-sm mb-stack-lg flex-wrap">
@@ -266,8 +358,9 @@ export default function AdminInventory() {
         {loading && <p className="text-on-surface-variant font-body-md">Đang tải...</p>}
 
         {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-stack-md">
-            {products.map((p) => {
+          <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/40 overflow-hidden shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-stack-md p-stack-md">
+            {paginatedProducts.map((p) => {
               const status = stockStatus(p.stock_quantity)
               const unit = stockUnit(p.product_type)
               const icon = p.product_type === 'equipment' ? blenderIcon : localCafeIcon
@@ -293,13 +386,15 @@ export default function AdminInventory() {
                           status.low ? 'text-error' : 'text-primary'
                         }`}
                       >
-                        <img src={icon} alt="" className="h-5 w-5" />
+                        <img src={icon} alt="" className={`h-5 w-5 ${status.low ? '' : 'icon-dark'}`} />
                       </div>
                       <h3 className="font-body-lg text-body-lg font-semibold text-on-surface truncate">{p.name}</h3>
                     </div>
-                    {p.flavor && (
-                      <span className="shrink-0 px-2 py-1 bg-surface-container text-on-surface-variant rounded-full font-label-sm text-label-sm">
-                        {p.flavor}
+                    {(p.flavor_tags?.length > 0 || p.flavor) && (
+                      <span className="shrink-0 px-2 py-1 bg-surface-container text-on-surface-variant rounded-full font-label-sm text-label-sm max-w-[140px] truncate" title={p.flavor_tags?.map((t) => t.name).join(', ') || p.flavor}>
+                        {p.flavor_tags?.length
+                          ? p.flavor_tags.map((t) => t.name).join(', ')
+                          : p.flavor}
                       </span>
                     )}
                   </div>
@@ -320,15 +415,13 @@ export default function AdminInventory() {
                       <span>{status.tone === 'ok' ? '✓' : '↓'}</span>
                       <span className={status.low ? 'font-bold' : ''}>{status.label}</span>
                     </div>
-                    {status.low && (
-                      <button
-                        type="button"
-                        onClick={() => openImportModal(p)}
-                        className="mt-3 text-sm font-label-md text-primary hover:underline"
-                      >
-                        + Nhập thêm ngay
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => openImportModal(p)}
+                      className="mt-3 text-sm font-label-md text-primary hover:underline font-semibold"
+                    >
+                      + Nhập kho
+                    </button>
                   </div>
                 </article>
               )
@@ -336,6 +429,15 @@ export default function AdminInventory() {
             {!products.length && (
               <p className="col-span-full text-on-surface-variant font-body-md">Không có sản phẩm trong kho này.</p>
             )}
+          </div>
+          {products.length > INVENTORY_PAGE_SIZE && (
+            <Pagination
+              page={page}
+              total={products.length}
+              pageSize={INVENTORY_PAGE_SIZE}
+              onPageChange={setPage}
+            />
+          )}
           </div>
         )}
       </main>
@@ -363,10 +465,10 @@ export default function AdminInventory() {
                 </select>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="font-label-md text-on-surface-variant">Ngày nhập</label>
+                <label className="font-label-md text-on-surface-variant">Ngày giờ nhập</label>
                 <input
-                  type="date"
-                  max={today}
+                  type="datetime-local"
+                  max={maxDatetimeLocal}
                   value={importForm.imported_at}
                   onChange={(e) => setImportForm((f) => ({ ...f, imported_at: e.target.value }))}
                   className="bg-surface-container border-none rounded-xl px-4 py-3 font-body-md"
@@ -439,21 +541,39 @@ export default function AdminInventory() {
                   {importLogs.map((log) => (
                     <li
                       key={log.id}
-                      className="rounded-xl border border-outline-variant/40 bg-surface-container-low p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                      className="rounded-xl border border-outline-variant/40 bg-surface-container-low p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                     >
                       <div>
                         <p className="font-body-md font-semibold text-on-surface">{log.product_name}</p>
                         <p className="font-label-sm text-on-surface-variant mt-1">
-                          Ngày nhập: {formatDateTime(log.imported_at)}
+                          {formatDateTime(log.imported_at)}
                           {log.creator_name ? ` · ${log.creator_name}` : ''}
                         </p>
                         {log.note && (
                           <p className="font-label-sm text-on-surface-variant mt-1 italic">{log.note}</p>
                         )}
                       </div>
-                      <span className="font-headline-md text-primary shrink-0">
-                        +{log.quantity} {stockUnit(log.product_type)}
-                      </span>
+                      <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                        <span className="font-headline-md text-primary">
+                          +{log.quantity} {stockUnit(log.product_type)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openEditLog(log)}
+                          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface-container-highest"
+                          aria-label="Sửa"
+                        >
+                          <img src={editIcon} alt="" className="h-[18px] w-[18px] icon-dark" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingLog(log)}
+                          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-error-container/30"
+                          aria-label="Xóa"
+                        >
+                          <img src={deleteIcon} alt="" className="h-[18px] w-[18px] icon-dark" />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -466,6 +586,98 @@ export default function AdminInventory() {
                 className="px-8 py-2.5 rounded-full font-label-md text-on-surface-variant hover:bg-surface-container-high"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingLog && (
+        <div className="fixed inset-0 z-[110] bg-on-background/40 backdrop-blur-sm flex items-center justify-center p-container-padding-mobile">
+          <div className="bg-surface-bright w-full max-w-md rounded-[24px] shadow-2xl border border-outline-variant/30 overflow-hidden">
+            <div className="p-6 border-b border-outline-variant/20 bg-surface-container-low">
+              <h2 className="font-headline-md text-headline-md text-on-surface">Sửa lịch sử nhập</h2>
+              <p className="font-label-sm text-on-surface-variant mt-1">{editingLog.product_name}</p>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="font-label-md text-on-surface-variant">Ngày giờ nhập</label>
+                <input
+                  type="datetime-local"
+                  max={maxDatetimeLocal}
+                  value={editLogForm.imported_at}
+                  onChange={(e) => setEditLogForm((f) => ({ ...f, imported_at: e.target.value }))}
+                  className="bg-surface-container border-none rounded-xl px-4 py-3 font-body-md"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="font-label-md text-on-surface-variant">Số lượng</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editLogForm.quantity}
+                  onChange={(e) => setEditLogForm((f) => ({ ...f, quantity: e.target.value }))}
+                  className="bg-surface-container border-none rounded-xl px-4 py-3 font-body-md"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="font-label-md text-on-surface-variant">Ghi chú</label>
+                <input
+                  type="text"
+                  value={editLogForm.note}
+                  onChange={(e) => setEditLogForm((f) => ({ ...f, note: e.target.value }))}
+                  className="bg-surface-container border-none rounded-xl px-4 py-3 font-body-md"
+                />
+              </div>
+            </div>
+            <div className="p-6 bg-surface-container-low border-t border-outline-variant/20 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingLog(null)}
+                className="px-6 py-2.5 rounded-full font-label-md text-on-surface-variant hover:bg-surface-container-high"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={handleEditLogSubmit}
+                className="px-8 py-2.5 bg-primary text-on-primary rounded-full font-label-md shadow-md disabled:opacity-60"
+              >
+                {submitting ? 'Đang lưu...' : 'Lưu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deletingLog && (
+        <div className="fixed inset-0 z-[110] bg-on-background/40 backdrop-blur-sm flex items-center justify-center p-container-padding-mobile">
+          <div className="bg-surface-bright w-full max-w-md rounded-[24px] shadow-2xl p-8 border border-outline-variant/30 flex flex-col gap-6">
+            <div className="text-center">
+              <h3 className="font-headline-md text-headline-md text-on-surface mb-2">Xóa bản ghi nhập?</h3>
+              <p className="text-on-surface-variant font-body-md">
+                {deletingLog.product_name} · +{deletingLog.quantity} {stockUnit(deletingLog.product_type)}
+                <br />
+                {formatDateTime(deletingLog.imported_at)}
+              </p>
+              <p className="text-error font-label-sm mt-2">Kho sản phẩm sẽ giảm tương ứng.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeletingLog(null)}
+                className="flex-1 py-3 rounded-full font-label-md text-on-surface-variant bg-surface-container-high"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={handleDeleteLog}
+                className="flex-1 py-3 rounded-full font-label-md text-on-error bg-error disabled:opacity-60"
+              >
+                {submitting ? 'Đang xóa...' : 'Xóa'}
               </button>
             </div>
           </div>

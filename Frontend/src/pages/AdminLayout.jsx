@@ -3,6 +3,7 @@ import iconPet from '../assets/iconpet.svg'
 import inventoryIcon from '../assets/inventory_2_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import warehouseIcon from '../assets/warehouse_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import receiptLongIcon from '../assets/receipt_long_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
+import personIcon from '../assets/person.svg'
 
 function NavItem({ to, icon, label, end }) {
   return (
@@ -17,7 +18,7 @@ function NavItem({ to, icon, label, end }) {
         }`
       }
     >
-      <img src={icon} alt="" className="h-5 w-5 opacity-80" />
+      <img src={icon} alt="" className="h-5 w-5 icon-dark" />
       <span className="font-label-md text-label-md">{label}</span>
     </NavLink>
   )

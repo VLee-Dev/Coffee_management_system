@@ -224,12 +224,25 @@ class UserPreference(Base, TimestampMixin):
 	user: Mapped[User] = relationship(back_populates="preferences")
 
 
-class ProductTag(Base, TimestampMixin):
-	__tablename__ = "product_tags"
+class FlavorGroup(Base, TimestampMixin):
+	__tablename__ = "flavor_groups"
 
 	id: Mapped[int] = mapped_column(Integer, primary_key=True)
-	name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+	name: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+	sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+	tags: Mapped[list[ProductTag]] = relationship(back_populates="group", cascade="all, delete-orphan")
+
+
+class ProductTag(Base, TimestampMixin):
+	__tablename__ = "product_tags"
+	__table_args__ = (UniqueConstraint("group_id", "name", name="uq_flavor_tag_group_name"),)
+
+	id: Mapped[int] = mapped_column(Integer, primary_key=True)
+	group_id: Mapped[int] = mapped_column(ForeignKey("flavor_groups.id", ondelete="RESTRICT"), nullable=False)
+	name: Mapped[str] = mapped_column(String(100), nullable=False)
+
+	group: Mapped[FlavorGroup] = relationship(back_populates="tags")
 	items: Mapped[list[ProductTagItem]] = relationship(back_populates="tag", cascade="all, delete-orphan")
 
 

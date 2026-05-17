@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { fetchCurrentUser, getToken, isAdmin } from '../lib/auth'
 
-export default function AdminRoute({ children }) {
+export default function AdminRoute() {
   const location = useLocation()
   const [status, setStatus] = useState('loading')
   const token = getToken()
@@ -54,5 +54,5 @@ export default function AdminRoute({ children }) {
     return <Navigate to="/hello" replace />
   }
 
-  return children
+  return <Outlet />
 }

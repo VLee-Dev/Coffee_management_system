@@ -6,6 +6,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import ProductStatus
+from app.schemas_flavor import FlavorTagOut
 
 
 class ProductBase(BaseModel):
@@ -15,6 +16,7 @@ class ProductBase(BaseModel):
 	price: Decimal = Field(gt=0)
 	stock_quantity: int = Field(ge=0)
 	flavor: Optional[str] = Field(default=None, max_length=120)
+	flavor_tag_ids: list[int] = Field(default_factory=list)
 	product_type: Optional[str] = Field(default="coffee")
 	status: ProductStatus = ProductStatus.active
 	image_url: Optional[str] = Field(default=None, max_length=500)
@@ -31,6 +33,7 @@ class ProductUpdate(BaseModel):
 	price: Optional[Decimal] = Field(default=None, gt=0)
 	stock_quantity: Optional[int] = Field(default=None, ge=0)
 	flavor: Optional[str] = Field(default=None, max_length=120)
+	flavor_tag_ids: Optional[list[int]] = None
 	product_type: Optional[str] = Field(default=None)
 	status: Optional[ProductStatus] = None
 	image_url: Optional[str] = Field(default=None, max_length=500)
@@ -38,4 +41,5 @@ class ProductUpdate(BaseModel):
 
 class ProductOut(ProductBase):
 	id: int
+	flavor_tags: list[FlavorTagOut] = Field(default_factory=list)
 	model_config = ConfigDict(from_attributes=True)

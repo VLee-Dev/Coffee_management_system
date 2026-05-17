@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -13,14 +13,33 @@ class InventoryAdjustIn(BaseModel):
 	change_type: StockChangeType = StockChangeType.import_
 	quantity: int = Field(gt=0)
 	note: Optional[str] = None
-	imported_at: Optional[date] = None
+	imported_at: Optional[datetime] = None
 
 	@field_validator("imported_at")
 	@classmethod
-	def imported_at_not_future(cls, value: Optional[date]) -> Optional[date]:
-		if value is not None and value > date.today():
-			raise ValueError("Ngày nhập không được vượt quá ngày hiện tại")
-		return value
+	def imported_at_not_future(cls, value: Optional[datetime]) -> Optional[datetime]:
+		if value is None:
+			return value
+		aware = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+		if aware > datetime.now(timezone.utc):
+			raise ValueError("Thời điểm nhập không được vượt quá hiện tại")
+		return aware
+
+
+class InventoryLogUpdate(BaseModel):
+	quantity: Optional[int] = Field(default=None, gt=0)
+	note: Optional[str] = None
+	imported_at: Optional[datetime] = None
+
+	@field_validator("imported_at")
+	@classmethod
+	def imported_at_not_future(cls, value: Optional[datetime]) -> Optional[datetime]:
+		if value is None:
+			return value
+		aware = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+		if aware > datetime.now(timezone.utc):
+			raise ValueError("Thời điểm nhập không được vượt quá hiện tại")
+		return aware
 
 
 class InventoryLogOut(BaseModel):

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserCreate(BaseModel):
@@ -28,4 +28,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
 	user_id: Optional[int] = None
+
+
+class PasswordChangeIn(BaseModel):
+	current_password: str
+	new_password: str = Field(min_length=6)
 
