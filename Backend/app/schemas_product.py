@@ -42,4 +42,14 @@ class ProductUpdate(BaseModel):
 class ProductOut(ProductBase):
 	id: int
 	flavor_tags: list[FlavorTagOut] = Field(default_factory=list)
+	total_units_sold: int = Field(default=0, ge=0)
+	featured_boost: int = Field(default=0, ge=0)
+	model_config = ConfigDict(from_attributes=True)
+
+
+class FeaturedCollectionOut(BaseModel):
+	"""Hai coffee (trên), hai dụng cụ pha chế (dưới), có thể trùng id khi thiếu mặt hàng."""
+
+	coffee: list[ProductOut]
+	equipment: list[ProductOut]
 	model_config = ConfigDict(from_attributes=True)

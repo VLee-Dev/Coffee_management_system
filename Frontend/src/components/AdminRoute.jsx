@@ -51,7 +51,7 @@ export default function AdminRoute() {
   }
 
   if (status === 'customer') {
-    return <Navigate to="/hello" replace />
+    return <Navigate to="/home" replace />
   }
 
   return <Outlet />

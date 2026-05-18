@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models
 from app.database import get_db
-from app.schemas_product import ProductCreate, ProductOut, ProductUpdate
+from app.schemas_product import FeaturedCollectionOut, ProductCreate, ProductOut, ProductUpdate
 from app.utils.flavor_tags import sync_product_flavor_tags
 from app.utils.inventory import record_import, sync_product_status
+from app.utils.featured_collection import pick_featured_collection
 from app.utils.product_serialize import product_to_out
 from app.utils.security import require_admin
 
@@ -27,11 +28,18 @@ def list_products(
 	category_id: int | None = None,
 	status: models.ProductStatus | None = None,
 	product_type: models.ProductType | None = None,
+	flavor_tag_ids: list[int] | None = Query(default=None),
 	skip: int = 0,
 	limit: int = 100,
 	sort: str | None = Query(default=None, pattern="^(id_desc|stock_asc|stock_desc)$"),
 ):
 	query = db.query(models.Product).options(_PRODUCT_TAG_LOAD)
+	if flavor_tag_ids:
+		query = (
+			query.join(models.ProductTagItem)
+			.filter(models.ProductTagItem.tag_id.in_(flavor_tag_ids))
+			.distinct()
+		)
 	if search:
 		keyword = f"%{search}%"
 		query = (
@@ -59,6 +67,16 @@ def list_products(
 		order = models.Product.id.desc()
 	products = query.order_by(order).offset(skip).limit(limit).all()
 	return [product_to_out(p) for p in products]
+
+
+@router.get("/featured-collection", response_model=FeaturedCollectionOut)
+def get_featured_collection(db: Session = Depends(get_db)):
+	"""Hai sản phẩm coffee + hai dụng cụ: ưu tiên lượt đã bán (đơn không hủy); không bán hoặc hòa điểm thì ngẫu nhiên; thiếu SKU thì lặp lại."""
+	coffee_pairs, equipment_pairs = pick_featured_collection(db)
+	return FeaturedCollectionOut(
+		coffee=[product_to_out(p, sold_units=s) for p, s in coffee_pairs],
+		equipment=[product_to_out(p, sold_units=s) for p, s in equipment_pairs],
+	)
 
 
 @router.get("/{product_id}", response_model=ProductOut)

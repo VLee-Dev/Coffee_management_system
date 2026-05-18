@@ -10,11 +10,18 @@ class UserCreate(BaseModel):
 	phone: Optional[str] = None
 
 
+class UserUpdate(BaseModel):
+	full_name: Optional[str] = Field(default=None, min_length=1, max_length=150)
+	phone: Optional[str] = Field(default=None, max_length=20)
+	address: Optional[str] = Field(default=None, max_length=255)
+
+
 class UserOut(BaseModel):
 	id: int
 	full_name: str
 	email: str
 	phone: Optional[str] = None
+	address: Optional[str] = None
 	role: str
 
 	class Config:

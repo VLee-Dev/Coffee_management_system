@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app import models
-from app.schemas import PasswordChangeIn, UserCreate, UserOut, Token
+from app.schemas import PasswordChangeIn, UserCreate, UserOut, UserUpdate, Token
 from app.database import get_db
 from app.utils.security import (
     get_password_hash,
@@ -36,7 +36,8 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     cart = models.Cart(user_id=user.id)
     db.add(cart)
     db.commit()
-    return user
+    db.refresh(user)
+    return _user_out(user)
 
 
 @router.post("/login", response_model=Token)
@@ -48,15 +49,40 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+def _user_out(user: models.User) -> UserOut:
+	return UserOut(
+		id=user.id,
+		full_name=user.full_name,
+		email=user.email,
+		phone=user.phone,
+		address=user.address,
+		role=user.role.value,
+	)
+
+
 @router.get("/me", response_model=UserOut)
 def read_me(current_user: models.User = Depends(get_current_user)):
-    return UserOut(
-        id=current_user.id,
-        full_name=current_user.full_name,
-        email=current_user.email,
-        phone=current_user.phone,
-        role=current_user.role.value,
-    )
+	return _user_out(current_user)
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(
+	body: UserUpdate,
+	db: Session = Depends(get_db),
+	current_user: models.User = Depends(get_current_user),
+):
+	data = body.model_dump(exclude_unset=True)
+	if not data:
+		return _user_out(current_user)
+	for field, value in data.items():
+		if field == "phone" and value is not None:
+			value = value.strip() or None
+		if field == "address" and value is not None:
+			value = value.strip() or None
+		setattr(current_user, field, value)
+	db.commit()
+	db.refresh(current_user)
+	return _user_out(current_user)
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)

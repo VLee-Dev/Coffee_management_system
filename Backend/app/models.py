@@ -125,6 +125,9 @@ class Product(Base, TimestampMixin):
 		default=ProductType.coffee,
 	)
 	image_url: Mapped[str | None] = mapped_column(String(500))
+	# Thống kê / gợi ý trưng bày (đồng bộ từ đơn hàng khi khởi động; có thể cập nhật job sau)
+	total_units_sold: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+	featured_boost: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
 	category: Mapped[Category] = relationship(back_populates="products")
 	cart_items: Mapped[list[CartItem]] = relationship(back_populates="product")

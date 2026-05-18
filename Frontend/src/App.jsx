@@ -3,7 +3,10 @@ import AdminRoute from './components/AdminRoute'
 import CustomerRoute from './components/CustomerRoute'
 import Login from './pages/Login'
 import Register from './pages/Register'
-import CustomerHello from './pages/CustomerHello'
+import UserHome from './pages/UserHome'
+import Developing from './pages/Developing'
+import UserProfile from './pages/UserProfile'
+import ShopPage from './pages/ShopPage'
 import AdminLayout from './pages/AdminLayout'
 import AdminProducts from './pages/AdminProducts'
 import AdminInventory from './pages/AdminInventory'
@@ -17,11 +20,46 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/hello" element={<Navigate to="/home" replace />} />
+        <Route path="/hello/developing" element={<Navigate to="/home/developing" replace />} />
+        <Route path="/hello/profile" element={<Navigate to="/home/profile" replace />} />
         <Route
-          path="/hello"
+          path="/home"
           element={
             <CustomerRoute>
-              <CustomerHello />
+              <UserHome />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/home/developing"
+          element={
+            <CustomerRoute>
+              <Developing />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/home/profile"
+          element={
+            <CustomerRoute>
+              <UserProfile />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/home/coffee"
+          element={
+            <CustomerRoute>
+              <ShopPage productType="coffee" />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/home/equipment"
+          element={
+            <CustomerRoute>
+              <ShopPage productType="equipment" />
             </CustomerRoute>
           }
         />

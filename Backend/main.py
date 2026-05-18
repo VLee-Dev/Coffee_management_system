@@ -58,11 +58,49 @@ def _migrate_flavor_tags_schema() -> None:
 		conn.execute(text("ALTER TABLE product_tags DROP CONSTRAINT IF EXISTS product_tags_name_key"))
 
 
+def _ensure_product_stats_columns() -> None:
+	insp = inspect(engine)
+	if "products" not in insp.get_table_names():
+		return
+	columns = {col["name"] for col in insp.get_columns("products")}
+	with engine.begin() as conn:
+		if "total_units_sold" not in columns:
+			conn.execute(text("ALTER TABLE products ADD COLUMN total_units_sold INTEGER NOT NULL DEFAULT 0"))
+		if "featured_boost" not in columns:
+			conn.execute(text("ALTER TABLE products ADD COLUMN featured_boost INTEGER NOT NULL DEFAULT 0"))
+
+
+def _backfill_product_total_units_sold() -> None:
+	insp = inspect(engine)
+	if "products" not in insp.get_table_names():
+		return
+	if "order_items" not in insp.get_table_names():
+		return
+	with engine.begin() as conn:
+		conn.execute(text("UPDATE products SET total_units_sold = 0"))
+		conn.execute(
+			text("""
+				UPDATE products AS p
+				SET total_units_sold = agg.t
+				FROM (
+					SELECT oi.product_id AS pid, CAST(SUM(oi.quantity) AS INTEGER) AS t
+					FROM order_items AS oi
+					INNER JOIN orders AS o ON o.id = oi.order_id
+					WHERE o.status != 'cancelled'
+					GROUP BY oi.product_id
+				) AS agg
+				WHERE p.id = agg.pid
+			""")
+		)
+
+
 @app.on_event("startup")
 def create_tables() -> None:
 	Base.metadata.create_all(bind=engine)
 	_ensure_inventory_imported_at_column()
 	_migrate_flavor_tags_schema()
+	_ensure_product_stats_columns()
+	_backfill_product_total_units_sold()
 	with SessionLocal() as db:
 		seed_default_admin(db)
 		seed_default_categories(db)

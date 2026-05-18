@@ -45,7 +45,7 @@ export default function Login() {
       if (isAdmin(user)) {
         navigate('/admin/products', { replace: true })
       } else {
-        navigate('/hello', { replace: true })
+        navigate('/home', { replace: true })
       }
     } catch (err) {
       setError(err.message)
