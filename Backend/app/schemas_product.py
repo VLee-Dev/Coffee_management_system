@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models import ProductStatus
 from app.schemas_flavor import FlavorTagOut
 
+BREWING_METHODS = ["pour_over", "cold_brew", "phin", "coffee_milk", "latte", "cappuccino", "espresso"]
+
 
 class ProductBase(BaseModel):
 	category_id: int
@@ -20,6 +22,7 @@ class ProductBase(BaseModel):
 	product_type: Optional[str] = Field(default="coffee")
 	status: ProductStatus = ProductStatus.active
 	image_url: Optional[str] = Field(default=None, max_length=500)
+	brewing_method: Optional[str] = Field(default=None)
 
 
 class ProductCreate(ProductBase):
@@ -37,6 +40,7 @@ class ProductUpdate(BaseModel):
 	product_type: Optional[str] = Field(default=None)
 	status: Optional[ProductStatus] = None
 	image_url: Optional[str] = Field(default=None, max_length=500)
+	brewing_method: Optional[str] = Field(default=None)
 
 
 class ProductOut(ProductBase):

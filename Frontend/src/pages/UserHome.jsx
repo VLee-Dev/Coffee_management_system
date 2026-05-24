@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import heroImage from '../assets/meocam.jfif'
+import { useCart } from '../context/CartContext'
 import {
   CUSTOMER_HOME,
   CUSTOMER_PROFILE,
   CUSTOMER_SHOP_COFFEE,
   CUSTOMER_SHOP_EQUIPMENT,
-  customerDevelopingPath,
+  CUSTOMER_CART,
+  CUSTOMER_ORDERS,
+  CUSTOMER_PRODUCT_DETAIL,
 } from '../constants/routes'
 import { clearToken, fetchCurrentUser, getApiBase, getToken } from '../lib/auth'
 
@@ -29,6 +32,10 @@ function padSlots(arr, n) {
 
 const DESC_FALLBACK = 'Meo Coffee chất lượng từ trái tim <3'
 
+function customerDevelopingPath(page) {
+  return '#'  // placeholder for under-development pages
+}
+
 function productDescription(product) {
   if (!product) return ''
   const t = product.description?.trim()
@@ -40,91 +47,96 @@ function FeaturedCard({ product, wide, onAddToCart }) {
   const isCoffee = product?.product_type === 'coffee'
   const flavorTags = isCoffee && Array.isArray(product.flavor_tags) ? product.flavor_tags : []
 
-  const imageBlock = (
-    <div
-      className={`relative overflow-hidden bg-surface-container-high ${
-        wide ? 'md:w-1/2 h-48 md:h-auto' : 'h-48'
-      }`}
-    >
-      {img ? (
-        <img
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-          src={img}
-        />
-      ) : (
-        <div
-          className={`absolute inset-0 bg-gradient-to-br opacity-90 ${
-            wide ? 'from-primary-container/40 to-secondary-container/30' : 'from-tertiary-container/50 to-primary-fixed/40'
-          }`}
-        />
-      )}
-    </div>
-  )
+  const detailUrl = product ? `${CUSTOMER_PRODUCT_DETAIL}/${product.id}` : '#'
 
-  const body = (
-    <div className={`${wide ? 'md:w-1/2 p-6 flex flex-col justify-center' : 'p-6 flex flex-col flex-grow'}`}>
-      <h3 className="font-headline-md text-[20px] text-on-surface mb-2">
-        {product?.name || 'Sắp cập nhật'}
-      </h3>
-      {product && (
-        <p className="font-body-md text-body-md text-on-surface-variant mb-2 line-clamp-3">{productDescription(product)}</p>
-      )}
-      {flavorTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2" aria-label="Hương vị">
-          {flavorTags.map((tag) => (
-            <span
-              key={tag.id}
-              className="inline-flex items-center rounded-full border border-outline-variant/60 bg-surface-container px-2.5 py-0.5 font-label-sm text-label-sm text-on-surface"
-              title={tag.group_name || undefined}
-            >
-              {tag.name}
-            </span>
-          ))}
-        </div>
-      )}
-      {product && (
-        <p className="font-label-sm text-label-sm text-on-surface-variant mb-2">Đã bán: {product.total_units_sold}</p>
-      )}
-      <div
-        className={`mt-auto flex items-center justify-between ${wide ? '' : 'pt-4 border-t border-outline-variant/20'}`}
-      >
-        <span className="font-bold text-primary">{product ? vnd.format(Number(product.price)) : '—'}</span>
-        <button
-          type="button"
-          onClick={onAddToCart}
-          disabled={!product}
-          className={
-            wide
-              ? 'bg-primary text-on-primary p-2 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40'
-              : 'text-primary border border-outline-variant p-2 rounded-full hover:bg-surface-container transition-colors disabled:opacity-40'
-          }
-          aria-label="Thêm vào giỏ"
-        >
-          <span className="material-symbols-outlined">add_shopping_cart</span>
-        </button>
-      </div>
-    </div>
+  const imageBlock = img ? (
+    <img
+      alt=""
+      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+      src={img}
+    />
+  ) : (
+    <div
+      className={`w-full h-full bg-gradient-to-br ${
+        wide ? 'from-primary-container/40 to-secondary-container/30' : 'from-tertiary-container/50 to-primary-fixed/40'
+      }`}
+    />
   )
 
   return (
     <article
-      className={`group bg-surface-container-lowest rounded-[24px] overflow-hidden flex flex-col shadow-diffusion hover:shadow-diffusion-hover transition-all duration-300 border border-outline-variant/30 ${
+      className={`relative group bg-surface-container-lowest rounded-[24px] overflow-hidden flex flex-col shadow-diffusion hover:shadow-diffusion-hover transition-all duration-300 border border-outline-variant/30 ${
         wide ? 'md:flex-row md:col-span-2' : 'md:col-span-1'
       }`}
     >
-      {imageBlock}
-      {body}
+      {/* Image */}
+      <Link
+        to={detailUrl}
+        className={`relative overflow-hidden bg-surface-container-high ${
+          wide ? 'md:w-1/2 h-48 md:h-auto' : 'h-48'
+        }`}
+      >
+        {imageBlock}
+      </Link>
+
+      {/* Body */}
+      <div className={`${wide ? 'md:w-1/2 p-6 flex flex-col justify-center' : 'p-6 flex flex-col flex-grow'}`}>
+        <Link to={detailUrl} className="flex-grow no-underline hover:opacity-80 transition-opacity">
+          <h3 className="font-headline-md text-[20px] text-on-surface mb-2">
+            {product?.name || 'Sắp cập nhật'}
+          </h3>
+          {product && (
+            <p className="font-body-md text-body-md text-on-surface-variant mb-2 line-clamp-3">{productDescription(product)}</p>
+          )}
+          {flavorTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2" aria-label="Hương vị">
+              {flavorTags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center rounded-full border border-outline-variant/60 bg-surface-container px-2.5 py-0.5 font-label-sm text-label-sm text-on-surface"
+                  title={tag.group_name || undefined}
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          )}
+          {product && (
+            <p className="font-label-sm text-label-sm text-on-surface-variant mb-2">Đã bán: {product.total_units_sold}</p>
+          )}
+          <span className="font-bold text-primary">{product ? vnd.format(Number(product.price)) : '—'}</span>
+        </Link>
+        <div className={`flex items-center ${wide ? 'pt-4 mt-auto' : 'pt-4 mt-4 border-t border-outline-variant/20'}`}>
+          <button
+            type="button"
+            onClick={() => onAddToCart(product)}
+            disabled={!product}
+            className={
+              wide
+                ? 'bg-primary text-on-primary px-4 py-2 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40 font-label-md'
+                : 'text-primary border border-outline-variant px-4 py-2 rounded-full hover:bg-surface-container transition-colors disabled:opacity-40 font-label-md'
+            }
+            aria-label="Thêm vào giỏ"
+          >
+            Thêm vào giỏ
+          </button>
+        </div>
+      </div>
     </article>
   )
 }
 
 export default function UserHome() {
   const navigate = useNavigate()
+  const { addProduct, itemCount } = useCart()
   const [name, setName] = useState('')
   const [featured, setFeatured] = useState(null)
   const [featError, setFeatError] = useState(null)
   const [featLoading, setFeatLoading] = useState(true)
+
+  function handleAddToCart(product) {
+    addProduct(product)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -165,7 +177,6 @@ export default function UserHome() {
     navigate('/login', { replace: true })
   }
 
-  const wip = customerDevelopingPath
   const coffeeSlots = padSlots(featured?.coffee, 2)
   const equipmentSlots = padSlots(featured?.equipment, 2)
 
@@ -192,10 +203,23 @@ export default function UserHome() {
           <button
             type="button"
             title="Giỏ hàng"
-            onClick={() => navigate(wip('cart'))}
-            className="hover:text-secondary transition-colors duration-200 active:scale-95 transition-transform p-2 rounded-full hover:bg-surface-container flex items-center justify-center"
+            onClick={() => navigate(CUSTOMER_CART)}
+            className="relative hover:text-secondary transition-colors duration-200 active:scale-95 transition-transform p-2 rounded-full hover:bg-surface-container flex items-center justify-center"
           >
             <span className="material-symbols-outlined">shopping_cart</span>
+            {itemCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            title="Lịch sử đơn hàng"
+            onClick={() => navigate(CUSTOMER_ORDERS)}
+            className="hover:text-secondary transition-colors duration-200 active:scale-95 transition-transform p-2 rounded-full hover:bg-surface-container flex items-center justify-center"
+          >
+            <span className="material-symbols-outlined">receipt_long</span>
           </button>
           <Link
             to={CUSTOMER_PROFILE}
@@ -263,13 +287,13 @@ export default function UserHome() {
                 key={coffeeSlots[0] ? `c0-${coffeeSlots[0].id}` : 'c0-empty'}
                 product={coffeeSlots[0]}
                 wide
-                onAddToCart={() => navigate(wip('product'))}
+                onAddToCart={handleAddToCart}
               />
               <FeaturedCard
                 key={coffeeSlots[1] ? `c1-${coffeeSlots[1].id}` : 'c1-empty'}
                 product={coffeeSlots[1]}
                 wide={false}
-                onAddToCart={() => navigate(wip('product'))}
+                onAddToCart={handleAddToCart}
               />
 
               <h3 className="font-label-md text-label-md text-on-surface-variant md:col-span-3 text-center md:text-left pt-2">
@@ -279,13 +303,13 @@ export default function UserHome() {
                 key={equipmentSlots[0] ? `e0-${equipmentSlots[0].id}` : 'e0-empty'}
                 product={equipmentSlots[0]}
                 wide={false}
-                onAddToCart={() => navigate(wip('product'))}
+                onAddToCart={handleAddToCart}
               />
               <FeaturedCard
                 key={equipmentSlots[1] ? `e1-${equipmentSlots[1].id}` : 'e1-empty'}
                 product={equipmentSlots[1]}
                 wide
-                onAddToCart={() => navigate(wip('product'))}
+                onAddToCart={handleAddToCart}
               />
             </div>
           )}
@@ -297,22 +321,22 @@ export default function UserHome() {
           <span className="font-headline-md text-headline-md text-primary font-bold">Meo Coffee</span>
           <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <li>
-              <Link to={wip('beans')} className="text-on-surface-variant hover:text-secondary transition-colors">
+              <Link to={customerDevelopingPath('beans')} className="text-on-surface-variant hover:text-secondary transition-colors">
                 Our Beans
               </Link>
             </li>
             <li>
-              <Link to={wip('cafe')} className="text-on-surface-variant hover:text-secondary transition-colors">
+              <Link to={customerDevelopingPath('cafe')} className="text-on-surface-variant hover:text-secondary transition-colors">
                 Cat Cafe
               </Link>
             </li>
             <li>
-              <Link to={wip('shipping')} className="text-on-surface-variant hover:text-secondary transition-colors">
+              <Link to={customerDevelopingPath('shipping')} className="text-on-surface-variant hover:text-secondary transition-colors">
                 Shipping
               </Link>
             </li>
             <li>
-              <Link to={wip('privacy')} className="text-on-surface-variant hover:text-secondary transition-colors">
+              <Link to={customerDevelopingPath('privacy')} className="text-on-surface-variant hover:text-secondary transition-colors">
                 Privacy
               </Link>
             </li>

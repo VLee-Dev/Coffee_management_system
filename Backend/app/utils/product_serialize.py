@@ -22,6 +22,7 @@ def product_to_out(
 		product_type=product.product_type.value if product.product_type else "coffee",
 		status=product.status,
 		image_url=product.image_url,
+		brewing_method=product.brewing_method.value if product.brewing_method else None,
 		flavor_tags=[FlavorTagOut(**t) for t in tag_dicts],
 		flavor_tag_ids=[t["id"] for t in tag_dicts],
 		total_units_sold=tus,

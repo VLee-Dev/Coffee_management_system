@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 	sys.path.insert(0, str(ROOT))
 
 from app.core.seed import seed_default_admin, seed_default_categories
-from app.core.seed_flavors import seed_flavor_catalog
+from app.core.seed_flavors import seed_flavor_catalog, seed_brewing_method_tags
 from app.database import SessionLocal
 from app import models
 
@@ -73,6 +73,7 @@ def main() -> None:
 		seed_default_admin(db)
 		seed_default_categories(db)
 		seed_flavor_catalog(db)
+		seed_brewing_method_tags(db)
 	except Exception as exc:
 		db.rollback()
 		print(f"Error: {exc}")
@@ -83,7 +84,7 @@ def main() -> None:
 	files_removed = _clear_uploads()
 	print("Done. Cleared: products, orders, inventory, flavor tags, carts, customers.")
 	print(f"Removed {files_removed} uploaded image(s). Kept admin account.")
-	print("Reseeded: categories + 8 empty flavor groups.")
+	print("Reseeded: categories + 8 empty flavor groups + 7 brewing method tags.")
 	print("Admin login: admin@meocoffee.com / 123456")
 
 

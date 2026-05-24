@@ -36,3 +36,25 @@ class OrderListResponse(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
 	status: str
+
+
+class CheckoutItem(BaseModel):
+	product_id: int
+	quantity: int
+
+
+class CheckoutRequest(BaseModel):
+	receiver_phone: str
+	receiver_address: str
+	district: str
+	payment_method: str
+	shipping_fee: float
+	items: list[CheckoutItem]
+
+
+class CheckoutResponse(BaseModel):
+	id: int
+	order_code: str
+	total_amount: float
+	status: str
+	payment_method: str

@@ -3,10 +3,11 @@ import searchIcon from '../assets/search_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.
 import AdminUserMenu from '../components/AdminUserMenu'
 import Pagination from '../components/Pagination'
 import FlavorTagPicker from '../components/FlavorTagPicker'
+import BrewingMethodPicker, { getBrewingMethodLabel } from '../components/BrewingMethodPicker'
 import { paginateSlice } from '../lib/pagination'
 import addIcon from '../assets/add_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 
-const PRODUCTS_PAGE_SIZE = 12
+const PRODUCTS_PAGE_SIZE = 8
 import addCircleIcon from '../assets/add_circle_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import editIcon from '../assets/edit_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import deleteIcon from '../assets/delete_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
@@ -38,6 +39,7 @@ export default function AdminProducts() {
     product_type: 'coffee',
     flavor: '',
     flavor_tag_ids: [],
+    brewing_method: '',
     description: '',
     stock_quantity: 0,
     image_url: '',
@@ -82,6 +84,7 @@ export default function AdminProducts() {
       product_type: pt,
       flavor: '',
       flavor_tag_ids: [],
+      brewing_method: '',
       description: '',
       stock_quantity: 0,
       image_url: '',
@@ -239,7 +242,12 @@ export default function AdminProducts() {
                           {tag.name}
                         </span>
                       ))}
-                      {!p.flavor_tags?.length && p.flavor && (
+                      {p.brewing_method && (
+                        <span className="bg-primary-container/20 text-primary font-label-sm text-label-sm px-2.5 py-1 rounded-full border border-primary-container/30">
+                          {getBrewingMethodLabel(p.brewing_method)}
+                        </span>
+                      )}
+                      {!p.flavor_tags?.length && !p.brewing_method && p.flavor && (
                         <span className="bg-secondary-container/20 text-tertiary font-label-sm text-label-sm px-2.5 py-1 rounded-full border border-secondary-container/30">
                           {p.flavor}
                         </span>
@@ -260,6 +268,7 @@ export default function AdminProducts() {
                               product_type: p.product_type || 'coffee',
                               flavor: p.flavor || '',
                               flavor_tag_ids: (p.flavor_tags || []).map((t) => t.id),
+                              brewing_method: p.brewing_method || '',
                               description: p.description || '',
                               stock_quantity: p.stock_quantity || 0,
                               image_url: p.image_url || '',
@@ -348,16 +357,10 @@ export default function AdminProducts() {
                     onChange={(ids) => setForm((f) => ({ ...f, flavor_tag_ids: ids }))}
                   />
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    <label className="font-label-md text-on-surface-variant">Chất liệu</label>
-                    <input
-                      value={form.flavor}
-                      onChange={(e) => setForm((f) => ({ ...f, flavor: e.target.value }))}
-                      className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md"
-                      placeholder="Nhập chất liệu"
-                      type="text"
-                    />
-                  </div>
+                  <BrewingMethodPicker
+                    value={form.brewing_method}
+                    onChange={(val) => setForm((f) => ({ ...f, brewing_method: val }))}
+                  />
                 )}
                 {productType === 'coffee' && (
                   <div className="flex flex-col gap-2">
@@ -403,10 +406,11 @@ export default function AdminProducts() {
                     description: form.description,
                     price: Number(form.price),
                     stock_quantity: Math.max(0, Number(form.stock_quantity) || 0),
-                    flavor: productType === 'equipment' ? form.flavor : null,
+                    flavor: productType === 'equipment' ? null : (form.flavor || null),
                     flavor_tag_ids: productType === 'coffee' ? form.flavor_tag_ids : [],
                     product_type: productType,
                     image_url: form.image_url || null,
+                    brewing_method: productType === 'equipment' ? (form.brewing_method || null) : null,
                   }
                   const res = await fetch(`${apiBase}/products`, {method:'POST', headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : undefined }, body: JSON.stringify(body)})
                   if(!res.ok){ const txt = await res.text(); throw new Error(txt || 'Failed') }
@@ -454,16 +458,10 @@ export default function AdminProducts() {
                     onChange={(ids) => setForm((f) => ({ ...f, flavor_tag_ids: ids }))}
                   />
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    <label className="font-label-md text-on-surface-variant">Chất liệu</label>
-                    <input
-                      value={form.flavor}
-                      onChange={(e) => setForm((f) => ({ ...f, flavor: e.target.value }))}
-                      className="bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-body-md"
-                      placeholder="Nhập chất liệu"
-                      type="text"
-                    />
-                  </div>
+                  <BrewingMethodPicker
+                    value={form.brewing_method}
+                    onChange={(val) => setForm((f) => ({ ...f, brewing_method: val }))}
+                  />
                 )}
                 {((editingProduct && editingProduct.product_type === 'coffee') || productType === 'coffee') && (
                   <div className="flex flex-col gap-2">
@@ -510,8 +508,10 @@ export default function AdminProducts() {
                   if(form.price!='') body.price = Number(form.price)
                   if(form.stock_quantity!=null) body.stock_quantity = Math.max(0, Number(form.stock_quantity) || 0)
                   const pt = form.product_type || editingProduct.product_type
-                  if (pt === 'equipment' && form.flavor != null) body.flavor = form.flavor
                   if (pt === 'coffee') body.flavor_tag_ids = form.flavor_tag_ids || []
+                  if (pt === 'equipment') {
+                    body.brewing_method = form.brewing_method || null
+                  }
                   if(form.product_type) body.product_type = form.product_type
                   if(form.image_url!=null) body.image_url = form.image_url || null
                   const res = await fetch(`${apiBase}/products/${editingProduct.id}`, {method:'PATCH', headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : undefined }, body: JSON.stringify(body)})

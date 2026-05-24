@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import CustomerChrome from '../components/CustomerChrome'
+import { Link, useNavigate } from 'react-router-dom'
+import CustomerChrome from '../components/layout/CustomerChrome'
 import Pagination from '../components/Pagination'
-import { customerDevelopingPath } from '../constants/routes'
+import { useCart } from '../context/CartContext'
+import { CUSTOMER_CART, CUSTOMER_PRODUCT_DETAIL } from '../constants/routes'
 import { getApiBase } from '../lib/auth'
 import {
   fetchFlavorCatalog,
@@ -15,22 +16,25 @@ import {
 } from '../lib/products'
 
 const PAGE_SIZE = 8
-const SUGGEST_COUNT = 6
+const SUGGEST_COUNT = 5
 
 function SuggestionCard({ product, onAdd }) {
+  const navigate = useNavigate()
   const img = productImageUrl(product, getApiBase())
   const isBestseller = (product.total_units_sold ?? 0) > 0
 
   return (
     <article className="snap-start shrink-0 w-[240px] bg-surface-container-lowest rounded-xl shadow-diffusion border border-outline-variant group cursor-pointer hover:-translate-y-1 transition-all duration-300">
       <div className="h-40 w-full rounded-t-[16px] bg-surface-container overflow-hidden relative">
-        {img ? (
-          <img alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={img} />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-container/30 to-secondary-container/20">
-            <span className="material-symbols-outlined text-outline text-[48px]">coffee</span>
-          </div>
-        )}
+        <div onClick={() => navigate(`${CUSTOMER_PRODUCT_DETAIL}/${product.id}`)} className="w-full h-full cursor-pointer">
+          {img ? (
+            <img alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={img} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-container/30 to-secondary-container/20">
+              <span className="material-symbols-outlined text-outline text-[48px]">coffee</span>
+            </div>
+          )}
+        </div>
         {isBestseller && (
           <div className="absolute top-2 right-2 bg-secondary-container/90 text-on-secondary-container font-label-sm text-label-sm px-2 py-1 rounded-full backdrop-blur-sm">
             Bán chạy
@@ -38,8 +42,10 @@ function SuggestionCard({ product, onAdd }) {
         )}
       </div>
       <div className="p-4 flex flex-col gap-2">
-        <h3 className="font-label-md text-label-md text-on-surface line-clamp-1">{product.name}</h3>
-        <p className="font-label-sm text-label-sm text-on-surface-variant line-clamp-2">{productSubtitle(product)}</p>
+        <div onClick={() => navigate(`${CUSTOMER_PRODUCT_DETAIL}/${product.id}`)} className="cursor-pointer">
+          <h3 className="font-label-md text-label-md text-on-surface line-clamp-1">{product.name}</h3>
+          <p className="font-label-sm text-label-sm text-on-surface-variant line-clamp-2 mt-1">{productSubtitle(product)}</p>
+        </div>
         <div className="flex items-center justify-between mt-2">
           <span className="font-label-md text-label-md text-primary">{formatVnd(product.price)}</span>
           <button
@@ -61,7 +67,7 @@ function GridCard({ product, onAdd }) {
 
   return (
     <article className="bg-surface-container-lowest rounded-xl shadow-diffusion border border-outline-variant flex flex-col overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-      <div className="h-48 w-full bg-surface-container relative overflow-hidden">
+      <Link to={`${CUSTOMER_PRODUCT_DETAIL}/${product.id}`} className="block h-48 w-full bg-surface-container relative overflow-hidden">
         {img ? (
           <img alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={img} />
         ) : (
@@ -71,9 +77,9 @@ function GridCard({ product, onAdd }) {
             </span>
           </div>
         )}
-      </div>
+      </Link>
       <div className="p-5 flex flex-col flex-grow justify-between gap-3">
-        <div>
+        <Link to={`${CUSTOMER_PRODUCT_DETAIL}/${product.id}`} className="block hover:opacity-70 transition-opacity">
           <h3 className="font-label-md text-label-md text-on-surface line-clamp-2">{product.name}</h3>
           <p className="font-label-sm text-label-sm text-on-surface-variant mt-1 line-clamp-2">{productSubtitle(product)}</p>
           {product.product_type === 'coffee' && product.flavor_tags?.length > 0 && (
@@ -88,7 +94,7 @@ function GridCard({ product, onAdd }) {
               ))}
             </div>
           )}
-        </div>
+        </Link>
         <div className="flex items-center justify-between">
           <span className="font-label-md text-label-md text-primary">{formatVnd(product.price)}</span>
           <button
@@ -108,7 +114,7 @@ function GridCard({ product, onAdd }) {
 export default function ShopPage({ productType }) {
   const navigate = useNavigate()
   const apiBase = getApiBase()
-  const wip = customerDevelopingPath
+  const { addProduct } = useCart()
   const isCoffee = productType === 'coffee'
   const title = isCoffee ? 'Coffee' : 'Dụng cụ pha chế'
   const searchPlaceholder = isCoffee
@@ -134,7 +140,9 @@ export default function ShopPage({ productType }) {
     [selectedTagIds],
   )
 
-  const onAddToCart = useCallback(() => navigate(wip('cart')), [navigate, wip])
+  const onAddToCart = useCallback((product) => {
+    addProduct(product)
+  }, [addProduct])
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(searchInput.trim()), 350)
@@ -236,8 +244,8 @@ export default function ShopPage({ productType }) {
   }
 
   return (
-    <CustomerChrome>
-      <main className="flex-grow flex flex-col pt-stack-lg pb-stack-lg gap-stack-lg max-w-7xl mx-auto w-full">
+    <CustomerChrome activeNav={productType}>
+      <main className="flex-grow flex flex-col pt-0 md:pt-stack-lg pb-stack-lg gap-stack-lg max-w-7xl mx-auto w-full">
         <section className="w-full">
           <div className="px-container-padding-mobile md:px-container-padding-desktop mb-stack-md flex items-end justify-between gap-4">
             <div>
@@ -253,7 +261,7 @@ export default function ShopPage({ productType }) {
                 <p className="font-body-md text-on-surface-variant px-2">Chưa có sản phẩm gợi ý.</p>
               )}
               {suggestions.map((p) => (
-                <SuggestionCard key={`s-${p.id}`} product={p} onAdd={onAddToCart} />
+                <SuggestionCard key={`s-${p.id}`} product={p} onAdd={() => onAddToCart(p)} />
               ))}
             </div>
           </div>
@@ -356,7 +364,7 @@ export default function ShopPage({ productType }) {
           {!gridLoading && pageItems.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
               {pageItems.map((p) => (
-                <GridCard key={p.id} product={p} onAdd={onAddToCart} />
+                <GridCard key={p.id} product={p} onAdd={() => onAddToCart(p)} />
               ))}
             </div>
           )}

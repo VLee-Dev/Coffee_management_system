@@ -9,6 +9,7 @@ import editIcon from '../assets/edit_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import deleteIcon from '../assets/delete_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
 import localCafeIcon from '../assets/local_cafe.svg'
 import blenderIcon from '../assets/blender_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg'
+import heroFallback from '../assets/meocam.jfif'
 import { getApiBase, getToken } from '../lib/auth'
 
 const LOW_STOCK_THRESHOLD = 10
@@ -47,6 +48,11 @@ function stockUnit(productType) {
   return productType === 'equipment' ? 'chiếc' : 'gói'
 }
 
+function resolveImageUrl(url) {
+  if (!url) return heroFallback
+  return url.startsWith('http') ? url : `${getApiBase()}${url}`
+}
+
 function stockStatus(stock) {
   const qty = Number(stock || 0)
   if (qty <= 0) return { label: 'Hết hàng', tone: 'error', low: true }
@@ -83,6 +89,13 @@ export default function AdminInventory() {
   const [editLogForm, setEditLogForm] = useState({ quantity: '', note: '', imported_at: '' })
   const [deletingLog, setDeletingLog] = useState(null)
   const [page, setPage] = useState(1)
+  const [detailProduct, setDetailProduct] = useState(null) // product for detail/edit modal
+  const [detailForm, setDetailForm] = useState({
+    name: '', price: '', stock_quantity: 0, description: '',
+  })
+  const [detailImagePreview, setDetailImagePreview] = useState(null)
+  const [detailSaving, setDetailSaving] = useState(false)
+  const [detailUploading, setDetailUploading] = useState(false)
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams()
@@ -158,6 +171,70 @@ export default function AdminInventory() {
       product_id: product ? String(product.id) : '',
     })
     setShowImportModal(true)
+  }
+
+  function openDetailModal(product) {
+    setDetailProduct(product)
+    setDetailForm({
+      name: product.name || '',
+      price: product.price || '',
+      stock_quantity: product.stock_quantity ?? 0,
+      description: product.description || '',
+    })
+    setDetailImagePreview(product.image_url ? resolveImageUrl(product.image_url) : null)
+  }
+
+  async function uploadDetailImage(file) {
+    if (!file) return null
+    setDetailUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`${apiBase}/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: fd,
+      })
+      if (!res.ok) throw new Error('Upload failed')
+      const data = await res.json()
+      return data.url
+    } catch (err) {
+      alert('Lỗi upload ảnh: ' + err.message)
+      return null
+    } finally {
+      setDetailUploading(false)
+    }
+  }
+
+  async function handleDetailSave() {
+    if (!detailProduct) return
+    setDetailSaving(true)
+    try {
+      const body = {}
+      if (detailForm.name) body.name = detailForm.name
+      if (detailForm.price !== '') body.price = Number(detailForm.price)
+      if (detailForm.stock_quantity != null) body.stock_quantity = Math.max(0, Number(detailForm.stock_quantity) || 0)
+      if (detailForm.description != null) body.description = detailForm.description
+
+      const res = await fetch(`${apiBase}/products/${detailProduct.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const txt = await res.text()
+        throw new Error(txt || 'Cập nhật thất bại')
+      }
+      setDetailProduct(null)
+      await loadProducts()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setDetailSaving(false)
+    }
   }
 
   function validateImportDatetime(value) {
@@ -368,7 +445,8 @@ export default function AdminInventory() {
               return (
                 <article
                   key={p.id}
-                  className={`rounded-xl p-stack-md flex flex-col justify-between shadow-sm transition-shadow hover:shadow-md relative overflow-hidden ${
+                  onClick={() => openDetailModal(p)}
+                  className={`rounded-xl p-stack-md flex flex-col justify-between shadow-sm transition-shadow hover:shadow-md relative overflow-hidden cursor-pointer ${
                     status.low
                       ? 'bg-error-container/20 border-2 border-error/50'
                       : 'bg-surface-container-lowest border border-outline-variant'
@@ -678,6 +756,138 @@ export default function AdminInventory() {
                 className="flex-1 py-3 rounded-full font-label-md text-on-error bg-error disabled:opacity-60"
               >
                 {submitting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detailProduct && (
+        <div className="fixed inset-0 z-[100] bg-on-background/40 backdrop-blur-sm flex items-center justify-center p-container-padding-mobile">
+          <div className="bg-surface-bright w-full max-w-lg max-h-[90vh] rounded-[24px] shadow-2xl border border-outline-variant/30 overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-outline-variant/20 bg-surface-container-low flex justify-between items-center gap-4">
+              <h2 className="font-headline-md text-headline-md text-on-surface">Chi tiết sản phẩm</h2>
+              <button
+                type="button"
+                onClick={() => setDetailProduct(null)}
+                className="text-on-surface-variant hover:text-on-surface text-2xl leading-none px-2"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-6 overflow-y-auto flex-1">
+              {detailImagePreview && (
+                <img
+                  src={detailImagePreview}
+                  alt={detailForm.name}
+                  className="w-full h-48 object-cover rounded-xl"
+                />
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <label className="font-label-md text-on-surface-variant">Tên sản phẩm</label>
+                  <input
+                    value={detailForm.name}
+                    onChange={(e) => setDetailForm((f) => ({ ...f, name: e.target.value }))}
+                    className="bg-surface-container border-none rounded-xl px-4 py-3 font-body-md"
+                    placeholder="Tên sản phẩm"
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="font-label-md text-on-surface-variant">Giá (VND)</label>
+                  <input
+                    inputMode="numeric"
+                    value={detailForm.price}
+                    onChange={(e) => setDetailForm((f) => ({ ...f, price: e.target.value.replace(/[^0-9]/g, '') }))}
+                    className="bg-surface-container border-none rounded-xl px-4 py-3 font-body-md"
+                    placeholder="Giá"
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="font-label-md text-on-surface-variant">Số lượng tồn kho</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={detailForm.stock_quantity}
+                    onChange={(e) => setDetailForm((f) => ({ ...f, stock_quantity: Math.max(0, Number(e.target.value) || 0) }))}
+                    className="bg-surface-container border-none rounded-xl px-4 py-3 font-body-md"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="font-label-md text-on-surface-variant">Ảnh sản phẩm</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files && e.target.files[0]
+                      if (!file) return
+                      setDetailImagePreview(URL.createObjectURL(file))
+                      const uploaded = await uploadDetailImage(file)
+                      if (uploaded) {
+                        setDetailForm((f) => ({ ...f, image_url: uploaded }))
+                        setDetailImagePreview(resolveImageUrl(uploaded))
+                      }
+                    }}
+                    className="bg-surface-container border-none rounded-xl px-4 py-2 text-body-md"
+                    disabled={detailUploading}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="font-label-md text-on-surface-variant">Mô tả</label>
+                <textarea
+                  value={detailForm.description}
+                  onChange={(e) => setDetailForm((f) => ({ ...f, description: e.target.value }))}
+                  className="bg-surface-container border-none rounded-xl px-4 py-3 font-body-md resize-none"
+                  placeholder="Mô tả sản phẩm"
+                  rows="3"
+                />
+              </div>
+              <div className="bg-surface-container-low rounded-xl p-4 flex flex-col gap-2">
+                <p className="font-label-md text-on-surface-variant">Thông tin thêm</p>
+                <div className="flex justify-between font-body-sm text-on-surface">
+                  <span>Loại:</span>
+                  <span className="font-semibold">{detailProduct.product_type === 'coffee' ? 'Coffee' : 'Dụng cụ pha coffee'}</span>
+                </div>
+                <div className="flex justify-between font-body-sm text-on-surface">
+                  <span>Đã bán:</span>
+                  <span className="font-semibold">{detailProduct.total_units_sold ?? 0} {stockUnit(detailProduct.product_type)}</span>
+                </div>
+                {detailProduct.flavor_tags?.length > 0 && (
+                  <div className="flex flex-wrap justify-end gap-1 mt-1">
+                    {detailProduct.flavor_tags.map((tag) => (
+                      <span key={tag.id} className="bg-secondary-container/20 text-tertiary font-label-sm text-label-sm px-2.5 py-1 rounded-full">
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {detailProduct.brewing_method && (
+                  <div className="flex justify-end mt-1">
+                    <span className="bg-primary-container/20 text-primary font-label-sm text-label-sm px-2.5 py-1 rounded-full">
+                      {detailProduct.brewing_method}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="p-6 bg-surface-container-low border-t border-outline-variant/20 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDetailProduct(null)}
+                className="px-6 py-2.5 rounded-full font-label-md text-on-surface-variant hover:bg-surface-container-high"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                disabled={detailSaving}
+                onClick={handleDetailSave}
+                className="px-8 py-2.5 bg-primary text-on-primary rounded-full font-label-md shadow-md disabled:opacity-60"
+              >
+                {detailSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
               </button>
             </div>
           </div>

@@ -7,9 +7,9 @@ from sqlalchemy import inspect, text
 from app.database import Base, engine
 from app.core.config import settings
 from app.core.seed import seed_default_admin, seed_default_categories
-from app.core.seed_flavors import seed_flavor_catalog
+from app.core.seed_flavors import seed_flavor_catalog, seed_brewing_method_tags
 from app.database import SessionLocal
-from app import models  # noqa: F401
+from app import models  
 from app.routers import auth as auth_router
 from app.routers import products as products_router
 from app.routers import categories as categories_router
@@ -94,17 +94,50 @@ def _backfill_product_total_units_sold() -> None:
 		)
 
 
+def _migrate_brewing_method() -> None:
+	insp = inspect(engine)
+	if "products" not in insp.get_table_names():
+		return
+	columns = {col["name"] for col in insp.get_columns("products")}
+	if "brewing_method" not in columns:
+		with engine.begin() as conn:
+			conn.execute(text('ALTER TABLE products ADD COLUMN brewing_method VARCHAR(30)'))
+
+	with engine.begin() as conn:
+		# Check if the enum type exists
+		result = conn.execute(text(
+			"SELECT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'brewing_method')"
+		))
+		type_exists = result.scalar()
+
+		if type_exists:
+			# Type exists, try to add missing values (ignore errors for existing ones)
+			for value in ['pour_over', 'cold_brew', 'phin', 'coffee_milk', 'latte', 'cappuccino', 'espresso']:
+				try:
+					conn.execute(text(f"ALTER TYPE brewing_method ADD VALUE IF NOT EXISTS '{value}'"))
+				except Exception:
+					pass  # Value already exists, skip
+		else:
+			conn.execute(text(
+				"CREATE TYPE brewing_method AS ENUM "
+				"('pour_over', 'cold_brew', 'phin', 'coffee_milk', 'latte', 'cappuccino', 'espresso')"
+			))
+			conn.execute(text("ALTER TABLE products ALTER COLUMN brewing_method TYPE brewing_method USING brewing_method::brewing_method"))
+
+
 @app.on_event("startup")
 def create_tables() -> None:
 	Base.metadata.create_all(bind=engine)
 	_ensure_inventory_imported_at_column()
 	_migrate_flavor_tags_schema()
 	_ensure_product_stats_columns()
+	_migrate_brewing_method()
 	_backfill_product_total_units_sold()
 	with SessionLocal() as db:
 		seed_default_admin(db)
 		seed_default_categories(db)
 		seed_flavor_catalog(db)
+		seed_brewing_method_tags(db)
 
 
 app.include_router(auth_router.router, prefix="/auth")

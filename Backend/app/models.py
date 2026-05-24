@@ -48,6 +48,27 @@ class ProductType(str, enum.Enum):
 	coffee = "coffee"
 	equipment = "equipment"
 
+
+class BrewingMethod(str, enum.Enum):
+	POUR_OVER = "pour_over"
+	COLD_BREW = "cold_brew"
+	PHIN = "phin"
+	COFFEE_MILK = "coffee_milk"
+	LATTE = "latte"
+	CAPPUCCINO = "cappuccino"
+	ESPRESSO = "espresso"
+
+
+BREWING_METHOD_LABELS: dict[str, str] = {
+	"pour_over": "Pour-Over (V60)",
+	"cold_brew": "Cold Brew",
+	"phin": "Phin",
+	"coffee_milk": "Coffee Sữa",
+	"latte": "Latte",
+	"cappuccino": "Cappuccino",
+	"espresso": "Espresso",
+}
+
 class OrderStatus(str, enum.Enum):
 	pending = "pending"
 	confirmed = "confirmed"
@@ -58,6 +79,7 @@ class OrderStatus(str, enum.Enum):
 
 class PaymentMethod(str, enum.Enum):
 	qr = "qr"
+	cod = "cod"
 
 class PaymentStatus(str, enum.Enum):
 	pending = "pending"
@@ -125,6 +147,11 @@ class Product(Base, TimestampMixin):
 		default=ProductType.coffee,
 	)
 	image_url: Mapped[str | None] = mapped_column(String(500))
+	brewing_method: Mapped[BrewingMethod | None] = mapped_column(
+		Enum(BrewingMethod, name="brewing_method", values_callable=lambda x: [e.value for e in x]),
+		nullable=True,
+		default=None,
+	)
 	# Thống kê / gợi ý trưng bày (đồng bộ từ đơn hàng khi khởi động; có thể cập nhật job sau)
 	total_units_sold: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 	featured_boost: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")

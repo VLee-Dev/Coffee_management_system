@@ -100,6 +100,10 @@ def create_product(
 	payload = product_in.model_dump()
 	flavor_tag_ids = payload.pop("flavor_tag_ids", [])
 	initial_stock = payload.pop("stock_quantity", 0) or 0
+	brewing_method_raw = payload.pop("brewing_method", None)
+
+	if brewing_method_raw:
+		payload["brewing_method"] = models.BrewingMethod(brewing_method_raw)
 
 	if payload.get("product_type") == models.ProductType.equipment.value:
 		flavor_tag_ids = []
@@ -144,6 +148,7 @@ def update_product(
 
 	update_data = product_in.model_dump(exclude_unset=True)
 	flavor_tag_ids = update_data.pop("flavor_tag_ids", None)
+	brewing_method_raw = update_data.pop("brewing_method", None)
 
 	if "category_id" in update_data:
 		category = db.query(models.Category).filter(models.Category.id == update_data["category_id"]).first()
@@ -157,11 +162,20 @@ def update_product(
 	pt = pt_raw.value if isinstance(pt_raw, models.ProductType) else str(pt_raw)
 
 	for field, value in update_data.items():
-		if field in ("stock_quantity", "flavor_tag_ids"):
+		if field in ("stock_quantity", "flavor_tag_ids", "brewing_method"):
 			continue
 		if field == "product_type" and value is not None:
 			value = models.ProductType(value)
 		setattr(product, field, value)
+
+	if brewing_method_raw is not None:
+		if brewing_method_raw == "" or brewing_method_raw is None:
+			product.brewing_method = None
+		else:
+			try:
+				product.brewing_method = models.BrewingMethod(brewing_method_raw)
+			except ValueError:
+				pass
 
 	if pt == models.ProductType.equipment.value and flavor_tag_ids is not None:
 		flavor_tag_ids = []

@@ -28,11 +28,22 @@ const STATUS_CONFIG = {
   },
 }
 
-const NEXT_STATUS = {
-  pending: 'confirmed',
-  confirmed: 'shipping',
-  shipping: 'completed',
+const VALID_TRANSITIONS = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['shipping', 'cancelled'],
+  shipping: ['completed', 'cancelled'],
+  completed: [],
+  cancelled: [],
 }
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'Tất cả' },
+  { value: 'pending', label: 'Chờ xử lý' },
+  { value: 'confirmed', label: 'Đã xác nhận' },
+  { value: 'shipping', label: 'Đang giao' },
+  { value: 'completed', label: 'Đã hoàn thành' },
+  { value: 'cancelled', label: 'Đã hủy' },
+]
 
 function formatVnd(value) {
   return `${Number(value || 0).toLocaleString('vi-VN')} ₫`
@@ -73,10 +84,12 @@ export default function AdminOrders() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [expandedId, setExpandedId] = useState(null)
   const [updatingId, setUpdatingId] = useState(null)
+  const [showCancelModal, setShowCancelModal] = useState(null) // { orderId, orderCode }
 
   const loadOrders = useCallback(async () => {
     setLoading(true)
@@ -86,6 +99,7 @@ export default function AdminOrders() {
       params.set('page', String(page))
       params.set('page_size', String(PAGE_SIZE))
       if (search.trim()) params.set('search', search.trim())
+      if (statusFilter) params.set('status', statusFilter)
       const res = await fetch(`${apiBase}/orders?${params}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       })
@@ -100,7 +114,7 @@ export default function AdminOrders() {
     } finally {
       setLoading(false)
     }
-  }, [apiBase, page, search, token])
+  }, [apiBase, page, search, statusFilter, token])
 
   useEffect(() => {
     loadOrders()
@@ -113,6 +127,11 @@ export default function AdminOrders() {
     }, 300)
     return () => clearTimeout(t)
   }, [searchInput])
+
+  function handleStatusFilterChange(e) {
+    setStatusFilter(e.target.value)
+    setPage(1)
+  }
 
   async function patchStatus(orderId, status) {
     setUpdatingId(orderId)
@@ -167,13 +186,22 @@ export default function AdminOrders() {
             </p>
           </div>
           <div className="flex gap-stack-sm self-start">
-            <button
-              type="button"
-              className="flex items-center gap-unit px-gutter py-unit border border-outline-variant bg-surface-container-lowest text-on-surface rounded-full font-label-md text-label-md hover:bg-surface-container-low shadow-[0_2px_8px_rgba(75,54,33,0.04)] transition-all"
-            >
-              <span className="material-symbols-outlined text-[18px]">filter_list</span>
-              Lọc
-            </button>
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={handleStatusFilterChange}
+                className="appearance-none flex items-center gap-unit px-gutter py-unit border border-outline-variant bg-surface-container-lowest text-on-surface rounded-full font-label-md text-label-md hover:bg-surface-container-low shadow-[0_2px_8px_rgba(75,54,33,0.04)] transition-all cursor-pointer pr-8"
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[18px] text-outline pointer-events-none">
+                expand_more
+              </span>
+            </div>
             <button
               type="button"
               className="flex items-center gap-unit px-gutter py-unit border border-outline-variant bg-surface-container-lowest text-on-surface rounded-full font-label-md text-label-md hover:bg-surface-container-low shadow-[0_2px_8px_rgba(75,54,33,0.04)] transition-all"
@@ -216,7 +244,7 @@ export default function AdminOrders() {
             {!loading &&
               orders.map((order) => {
                 const expanded = expandedId === order.id
-                const nextStatus = NEXT_STATUS[order.status]
+                const transitions = VALID_TRANSITIONS[order.status] || []
                 return (
                   <div key={order.id} className={expanded ? 'flex flex-col bg-surface-bright shadow-[inset_0_4px_12px_rgba(75,54,33,0.03)] border-l-4 border-l-primary' : ''}>
                     <button
@@ -300,27 +328,38 @@ export default function AdminOrders() {
                                 </ul>
                               </>
                             )}
-                            <div className="flex justify-end gap-stack-sm mt-stack-md pt-stack-sm border-t border-outline-variant/40">
-                              {order.status !== 'cancelled' && order.status !== 'completed' && (
+                            <div className="flex flex-wrap justify-end items-center gap-stack-sm mt-stack-md pt-stack-sm border-t border-outline-variant/40">
+                              {transitions.includes('cancelled') && (
                                 <button
                                   type="button"
                                   disabled={updatingId === order.id}
-                                  onClick={() => patchStatus(order.id, 'cancelled')}
+                                  onClick={() => setShowCancelModal({ orderId: order.id, orderCode: order.order_code })}
                                   className="px-4 py-2 border border-outline text-tertiary rounded-full font-label-md text-label-md hover:bg-surface-container-low transition-colors disabled:opacity-60"
                                 >
                                   Hủy đơn
                                 </button>
                               )}
-                              {nextStatus && (
-                                <button
-                                  type="button"
-                                  disabled={updatingId === order.id}
-                                  onClick={() => patchStatus(order.id, nextStatus)}
-                                  className="px-4 py-2 bg-primary text-on-primary rounded-full font-label-md text-label-md hover:scale-[0.98] transition-transform shadow-[0_4px_12px_rgba(147,75,0,0.2)] disabled:opacity-60"
-                                >
-                                  {updatingId === order.id ? 'Đang lưu...' : 'Cập nhật trạng thái'}
-                                </button>
-                              )}
+                              {transitions.filter(s => s !== 'cancelled').length > 0 ? (
+                                <div className="flex items-center gap-stack-sm">
+                                  <select
+                                    value=""
+                                    onChange={(e) => {
+                                      if (e.target.value) patchStatus(order.id, e.target.value)
+                                    }}
+                                    disabled={updatingId === order.id}
+                                    className="appearance-none border border-outline bg-surface-container-low text-on-surface rounded-full px-4 py-2 font-label-md text-label-md hover:bg-surface-container-high transition-colors cursor-pointer"
+                                  >
+                                    <option value="" disabled>Chọn trạng thái</option>
+                                    {transitions.filter(s => s !== 'cancelled').map((s) => (
+                                      <option key={s} value={s}>
+                                        {STATUS_CONFIG[s]?.label || s}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : !transitions.includes('cancelled') ? (
+                                <span className="text-on-surface-variant font-label-md text-label-md italic">Không có thao tác</span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -344,6 +383,40 @@ export default function AdminOrders() {
           />
         </div>
       </div>
+
+      {showCancelModal && (
+        <div className="fixed inset-0 z-[100] bg-on-background/40 backdrop-blur-sm flex items-center justify-center p-container-padding-mobile">
+          <div className="bg-surface-bright w-full max-w-sm rounded-[24px] shadow-2xl p-8 border border-outline-variant/30 flex flex-col gap-6">
+            <div className="w-16 h-16 bg-error-container/30 text-error rounded-full flex items-center justify-center self-center">
+              <span className="material-symbols-outlined text-[32px]">cancel</span>
+            </div>
+            <div className="text-center">
+              <h3 className="font-headline-md text-on-surface mb-2">Xác nhận hủy đơn?</h3>
+              <p className="font-body-md text-on-surface-variant">
+                Bạn có chắc muốn hủy đơn <span className="font-bold text-primary">#{showCancelModal.orderCode}</span>? Thao tác này sẽ hoàn kho cho sản phẩm.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCancelModal(null)}
+                className="flex-1 py-3 rounded-full font-label-md text-on-surface-variant bg-surface-container-high hover:bg-surface-container-highest transition-colors"
+              >
+                Không, giữ đơn
+              </button>
+              <button
+                disabled={updatingId === showCancelModal.orderId}
+                onClick={() => {
+                  patchStatus(showCancelModal.orderId, 'cancelled')
+                  setShowCancelModal(null)
+                }}
+                className="flex-1 py-3 rounded-full font-label-md text-on-error bg-error shadow-md hover:shadow-lg transition-all btn-squish disabled:opacity-60"
+              >
+                {updatingId === showCancelModal.orderId ? 'Đang hủy...' : 'Có, hủy ngay'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

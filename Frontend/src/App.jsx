@@ -7,6 +7,10 @@ import UserHome from './pages/UserHome'
 import Developing from './pages/Developing'
 import UserProfile from './pages/UserProfile'
 import ShopPage from './pages/ShopPage'
+import CartPage from './pages/CartPage'
+import CheckoutPage from './pages/CheckoutPage'
+import CustomerOrderHistory from './pages/CustomerOrderHistory'
+import ProductDetailPage from './pages/ProductDetailPage'
 import AdminLayout from './pages/AdminLayout'
 import AdminProducts from './pages/AdminProducts'
 import AdminInventory from './pages/AdminInventory'
@@ -60,6 +64,38 @@ export default function App() {
           element={
             <CustomerRoute>
               <ShopPage productType="equipment" />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/home/cart"
+          element={
+            <CustomerRoute>
+              <CartPage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/home/checkout"
+          element={
+            <CustomerRoute>
+              <CheckoutPage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/home/orders"
+          element={
+            <CustomerRoute>
+              <CustomerOrderHistory />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/home/product/:productId"
+          element={
+            <CustomerRoute>
+              <ProductDetailPage />
             </CustomerRoute>
           }
         />

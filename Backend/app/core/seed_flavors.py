@@ -2,7 +2,30 @@ from sqlalchemy.orm import Session
 
 from app import models
 
-# Chỉ seed nhóm — không seed tag. Admin tự thêm vị.
+BREWING_METHOD_TAGS: list[str] = [
+	"Pour-Over (V60)",
+	"Cold Brew",
+	"Phin",
+	"Coffee Sữa",
+	"Latte",
+	"Cappuccino",
+	"Espresso",
+]
+
+
+def seed_brewing_method_tags(db: Session) -> None:
+	group = db.query(models.FlavorGroup).filter(models.FlavorGroup.name == "Cách pha").first()
+	if not group:
+		group = models.FlavorGroup(name="Cách pha", sort_order=99)
+		db.add(group)
+		db.flush()
+
+	existing_names = {t.name for t in group.tags}
+	for name in BREWING_METHOD_TAGS:
+		if name not in existing_names:
+			db.add(models.ProductTag(name=name, group_id=group.id))
+
+	db.commit()
 CANONICAL_FLAVOR_GROUPS: list[tuple[str, int]] = [
 	("Trái cây", 1),
 	("Hoa", 2),

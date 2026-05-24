@@ -22,3 +22,23 @@ export async function fetchCurrentUser(token = getToken()) {
 export function isAdmin(user) {
   return user?.role === 'admin'
 }
+
+export async function authFetch(url, options = {}) {
+  const token = getToken()
+  const headers = {
+    ...(options.headers || {}),
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  const res = await fetch(`${getApiBase()}${url}`, {
+    ...options,
+    headers,
+  })
+  if (res.status === 401) {
+    const err = new Error('Phiên đăng nhập hết hạn')
+    err.code = 'AUTH'
+    throw err
+  }
+  return res
+}
